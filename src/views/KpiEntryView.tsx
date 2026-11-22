@@ -170,6 +170,8 @@ export function KpiEntryView({
           remarks: (entry?.remarks || '').trim(),
           evidenceUrl: '',
           evidenceName: '',
+          isEmployeeSpecific: Boolean(def.isEmployeeSpecific),
+          employeeName: def.employeeName || '',
         };
 
         await createKpiRecord(actor, payload, settings);
@@ -335,11 +337,16 @@ export function KpiEntryView({
               return (
                 <div key={def.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="space-y-1 max-w-md">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-bold text-white font-display">{def.title}</span>
                       <span className="text-[11px] px-2 py-0.5 rounded bg-white/5 text-[#D4AF37]">
                         {def.categoryName}
                       </span>
+                      {def.isEmployeeSpecific && def.employeeName && (
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-[#FACC15]/10 text-[#FACC15] font-semibold">
+                          Employee: {def.employeeName}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-zinc-400 leading-relaxed">
                       {def.description || 'Standard departmental performance target.'}

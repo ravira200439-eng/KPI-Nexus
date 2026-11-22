@@ -417,6 +417,8 @@ export async function createKpiDefinition(
     defaultTarget: number;
     calculationMethod: CalculationMethod;
     defaultPeriodType: ReportingPeriodType;
+    isEmployeeSpecific?: boolean;
+    employeeName?: string;
     isActive: boolean;
   }
 ): Promise<string> {
@@ -435,6 +437,8 @@ export async function createKpiDefinition(
       defaultTarget: Number(input.defaultTarget) || 0,
       calculationMethod: input.calculationMethod,
       defaultPeriodType: input.defaultPeriodType,
+      isEmployeeSpecific: Boolean(input.isEmployeeSpecific),
+      employeeName: clampStr(input.employeeName || '', 100),
       isActive: input.isActive,
       createdBy: clampStr(actor.uid, 128),
       createdAt: serverTimestamp(),

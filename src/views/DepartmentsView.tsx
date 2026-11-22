@@ -57,6 +57,11 @@ export function DepartmentsView({ onNavigate, onQuickCreateForDept }: Department
     [activeDept, records]
   );
 
+  const employeeRecords = useMemo(
+    () => deptRecords.filter((r) => r.isEmployeeSpecific && r.employeeName),
+    [deptRecords]
+  );
+
   const deptDefs = useMemo(
     () => (activeDept ? definitions.filter((def) => def.departmentId === activeDept.id) : []),
     [activeDept, definitions]
@@ -330,6 +335,49 @@ export function DepartmentsView({ onNavigate, onQuickCreateForDept }: Department
               </table>
             </div>
           </div>
+
+          {/* Employee-Wise KPI Performance Breakdown */}
+          {employeeRecords.length > 0 && (
+            <div className="bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden shadow-xl">
+              <div className="px-5 py-4 border-b border-white/8 flex items-center justify-between">
+                <h3 className="text-base font-bold text-white font-display">
+                  Employee-Wise Performance Breakdown ({employeeRecords.length})
+                </h3>
+                <span className="text-xs text-[#FACC15]">Individual Employee KPIs</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/8 text-[11px] font-medium text-zinc-400 bg-[#0B0D11]">
+                      <th className="py-3 px-4">Employee Name</th>
+                      <th className="py-3 px-4">KPI Title</th>
+                      <th className="py-3 px-4">Period</th>
+                      <th className="py-3 px-4 text-right">Achievement</th>
+                      <th className="py-3 px-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/6 text-[13px]">
+                    {employeeRecords.map((r) => {
+                      const st = getStatusColor(r.status);
+                      return (
+                        <tr key={r.id} className="hover:bg-white/[0.02]">
+                          <td className="py-3 px-4 font-semibold text-[#FACC15]">{r.employeeName}</td>
+                          <td className="py-3 px-4 font-medium text-zinc-100">{r.kpiTitle}</td>
+                          <td className="py-3 px-4 font-mono-tabular text-xs text-zinc-300">
+                            {formatPeriodLabel(r)}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono-tabular font-semibold text-[#FACC15]">
+                            {r.achievementPct.toFixed(1)}%
+                          </td>
+                          <td className={`py-3 px-4 text-xs font-medium ${st.text}`}>{r.status}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Departmental Historical Records */}
           <div className="bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden shadow-xl">

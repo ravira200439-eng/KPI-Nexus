@@ -48,6 +48,8 @@ export function KpiConfigurationView() {
   const [defTarget, setDefTarget] = useState('100');
   const [defMethod, setDefMethod] = useState<CalculationMethod>('higher_is_better');
   const [defPeriod, setDefPeriod] = useState<ReportingPeriodType>('Monthly');
+  const [isEmployeeSpecific, setIsEmployeeSpecific] = useState(false);
+  const [defEmployeeName, setDefEmployeeName] = useState('');
   const [defToDelete, setDefToDelete] = useState<KpiDefinition | null>(null);
 
   // Period Form
@@ -110,10 +112,14 @@ export function KpiConfigurationView() {
         defaultTarget: Number(defTarget) || 0,
         calculationMethod: defMethod,
         defaultPeriodType: defPeriod,
+        isEmployeeSpecific,
+        employeeName: isEmployeeSpecific ? defEmployeeName.trim() : '',
         isActive: true,
       });
       setDefTitle('');
       setDefDesc('');
+      setDefEmployeeName('');
+      setIsEmployeeSpecific(false);
     } finally {
       setSaving(false);
     }
@@ -313,6 +319,33 @@ export function KpiConfigurationView() {
               </select>
             </div>
 
+            <div className="pt-2 border-t border-white/8 space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isEmployeeSpecific}
+                  onChange={(e) => setIsEmployeeSpecific(e.target.checked)}
+                  className="rounded bg-[#161920] border-white/20 text-[#FACC15] focus:ring-0"
+                />
+                <span className="text-xs font-medium text-zinc-200">Is Employee-Specific KPI?</span>
+              </label>
+
+              {isEmployeeSpecific && (
+                <div>
+                  <label className="block text-xs font-medium text-zinc-300 mb-1">Employee Name / ID *</label>
+                  <input
+                    type="text"
+                    required={isEmployeeSpecific}
+                    maxLength={100}
+                    value={defEmployeeName}
+                    onChange={(e) => setDefEmployeeName(e.target.value)}
+                    placeholder="e.g., John Doe (Senior Exec)"
+                    className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100"
+                  />
+                </div>
+              )}
+            </div>
+
             <button
               type="submit"
               disabled={saving || departments.length === 0}
@@ -333,7 +366,7 @@ export function KpiConfigurationView() {
                 <thead>
                   <tr className="border-b border-white/8 text-[11px] text-zinc-400 bg-[#0B0D11]">
                     <th className="py-3 px-4">KPI Title</th>
-                    <th className="py-3 px-4">Department</th>
+                    <th className="py-3 px-4">Department / Employee</th>
                     <th className="py-3 px-4">Method</th>
                     <th className="py-3 px-4 text-right">Target</th>
                     <th className="py-3 px-4 text-right">Action</th>
@@ -346,7 +379,16 @@ export function KpiConfigurationView() {
                         <div className="font-semibold text-zinc-100">{def.title}</div>
                         <div className="text-zinc-500">{def.categoryName} · {def.defaultPeriodType}</div>
                       </td>
-                      <td className="py-3 px-4 text-zinc-300">{def.departmentName}</td>
+                      <td className="py-3 px-4">
+                        <div className="text-zinc-300">{def.departmentName}</div>
+                        {def.isEmployeeSpecific && def.employeeName ? (
+                          <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] bg-[#FACC15]/10 text-[#FACC15] font-medium">
+                            Employee: {def.employeeName}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-zinc-500">Department General</span>
+                        )}
+                      </td>
                       <td className="py-3 px-4 text-zinc-400">
                         {def.calculationMethod === 'lower_is_better' ? 'Lower is Better' : 'Higher is Better'}
                       </td>

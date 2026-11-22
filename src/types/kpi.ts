@@ -104,6 +104,8 @@ export interface KpiDefinition {
   defaultTarget: number;
   calculationMethod: CalculationMethod;
   defaultPeriodType: ReportingPeriodType;
+  isEmployeeSpecific?: boolean;
+  employeeName?: string;
   isActive: boolean;
   createdBy: string;
   createdAt: any;
@@ -133,6 +135,8 @@ export interface KpiRecord {
   remarks: string;
   evidenceUrl: string;
   evidenceName: string;
+  isEmployeeSpecific?: boolean;
+  employeeName?: string;
   submittedByUid: string;
   submittedByEmail: string;
   submittedByName: string;
