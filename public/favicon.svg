@@ -1,0 +1,33 @@
+<svg width="64" height="64" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="kpiNexusGold" x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#FACC15" />
+      <stop offset="55%" stopColor="#D4AF37" />
+      <stop offset="100%" stopColor="#9A7209" />
+    </linearGradient>
+  </defs>
+  <path
+    d="M24 3L42 12V25C42 35.2 34.1 42.7 24 45C13.9 42.7 6 35.2 6 25V12L24 3Z"
+    fill="#111318"
+    stroke="url(#kpiNexusGold)"
+    strokeWidth="2.2"
+  />
+  <path
+    d="M15 31L21 24L26 28L33 17"
+    stroke="#FACC15"
+    strokeWidth="2.6"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  />
+  <path
+    d="M28 17H33V22"
+    stroke="#FACC15"
+    strokeWidth="2.4"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  />
+  <circle cx="15" cy="31" r="2.2" fill="#D4AF37" />
+  <circle cx="21" cy="24" r="2.2" fill="#D4AF37" />
+  <circle cx="26" cy="28" r="2.2" fill="#D4AF37" />
+  <circle cx="33" cy="17" r="2.5" fill="#FACC15" />
+</svg>

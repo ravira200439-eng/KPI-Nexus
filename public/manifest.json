@@ -1,0 +1,17 @@
+{
+  "name": "KPI Nexus — X Guard (Private) Limited",
+  "short_name": "KPI Nexus",
+  "description": "Centralized Department-Wise Key Performance Indicator Management System for X Guard (Private) Limited.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08090B",
+  "theme_color": "#FACC15",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
