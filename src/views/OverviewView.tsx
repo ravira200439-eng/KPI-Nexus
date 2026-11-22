@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { motion } from 'motion/react';
 import {
   Bar,
   BarChart,
@@ -64,7 +65,10 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
   const filtered = useMemo(() => filterRecords(records, filters), [records, filters]);
   const metrics = useMemo(() => computeOverviewMetrics(filtered), [filtered]);
   const deptComparison = useMemo(
-    () => computeDepartmentComparison(filtered, departments).filter((d) => d.count > 0 || filters.departmentId === 'all'),
+    () =>
+      computeDepartmentComparison(filtered, departments).filter(
+        (d) => d.count > 0 || filters.departmentId === 'all'
+      ),
     [filtered, departments, filters.departmentId]
   );
 
@@ -87,7 +91,12 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
     });
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className="space-y-6"
+    >
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -101,28 +110,32 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
 
         <div className="flex items-center gap-3">
           {isEditor && (
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               type="button"
               onClick={() => onNavigate('kpi_entry')}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-lg shadow-[#FACC15]/10"
             >
               <FilePlus2 className="w-4 h-4" />
               Record KPI
-            </button>
+            </motion.button>
           )}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="button"
             onClick={() => onNavigate('meeting_presentation')}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#161920] hover:bg-zinc-800 border border-white/10 text-sm font-medium text-zinc-100 transition-colors cursor-pointer whitespace-nowrap shrink-0"
           >
             Present Mode
             <ArrowUpRight className="w-4 h-4 text-[#FACC15]" />
-          </button>
+          </motion.button>
         </div>
       </div>
 
       {/* Dynamic Multi-Filter Bar */}
-      <div className="bg-[#0F1115] border border-white/8 rounded-xl p-4">
+      <div className="bg-[#0F1115] border border-white/8 rounded-xl p-4 shadow-xl">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2 text-xs font-medium text-[#D4AF37]">
             <Filter className="w-3.5 h-3.5" />
@@ -143,7 +156,7 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
             aria-label="Filter by department"
             value={filters.departmentId}
             onChange={(e) => setFilters((f) => ({ ...f, departmentId: e.target.value }))}
-            className="bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+            className="bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15] transition-all"
           >
             <option value="all">All Departments</option>
             {departments.map((d) => (
@@ -157,7 +170,7 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
             aria-label="Filter by year"
             value={filters.year}
             onChange={(e) => setFilters((f) => ({ ...f, year: Number(e.target.value) }))}
-            className="bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+            className="bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15] transition-all"
           >
             <option value={0}>All Years</option>
             {availableYears.map((y) => (
@@ -171,7 +184,7 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
             aria-label="Filter by quarter"
             value={filters.quarter}
             onChange={(e) => setFilters((f) => ({ ...f, quarter: Number(e.target.value) }))}
-            className="bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+            className="bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15] transition-all"
           >
             <option value={0}>All Quarters</option>
             {QUARTER_NAMES.map((q, idx) => (
@@ -185,7 +198,7 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
             aria-label="Filter by month"
             value={filters.month}
             onChange={(e) => setFilters((f) => ({ ...f, month: Number(e.target.value) }))}
-            className="bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+            className="bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15] transition-all"
           >
             <option value={0}>All Months</option>
             {MONTH_NAMES.map((m, idx) => (
@@ -199,7 +212,7 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
             aria-label="Filter by KPI category"
             value={filters.categoryId}
             onChange={(e) => setFilters((f) => ({ ...f, categoryId: e.target.value }))}
-            className="bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+            className="bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15] transition-all"
           >
             <option value="all">All Categories</option>
             {categories.map((c) => (
@@ -213,7 +226,7 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
             aria-label="Filter by performance status"
             value={filters.status}
             onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
-            className="bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+            className="bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15] transition-all"
           >
             <option value="all">All Statuses</option>
             <option value="Target Achieved">Target Achieved</option>
@@ -226,7 +239,10 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
 
       {/* Primary KPI Summary Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5 hover:border-[#FACC15]/40 transition-colors">
+        <motion.div
+          whileHover={{ y: -3, transition: { duration: 0.2 } }}
+          className="bg-[#0F1115] border border-white/8 rounded-xl p-5 shadow-lg"
+        >
           <div className="flex items-center justify-between text-xs text-zinc-400">
             <span>Overall Company KPI Achievement</span>
             <TrendingUp className="w-4 h-4 text-[#FACC15]" />
@@ -237,9 +253,12 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
           <div className="text-xs text-zinc-500 mt-2">
             Average across <span className="font-mono-tabular text-zinc-300">{metrics.totalKpis}</span> filtered KPI records
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5 hover:border-white/20 transition-colors">
+        <motion.div
+          whileHover={{ y: -3, transition: { duration: 0.2 } }}
+          className="bg-[#0F1115] border border-white/8 rounded-xl p-5 shadow-lg"
+        >
           <div className="flex items-center justify-between text-xs text-zinc-400">
             <span>Target Achieved KPIs</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -250,9 +269,12 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
           <div className="text-xs text-zinc-500 mt-2">
             Plus <span className="font-mono-tabular text-[#FACC15]">{metrics.nearlyCount}</span> nearly achieved ({settings.thresholdNearly}%+)
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5 hover:border-white/20 transition-colors">
+        <motion.div
+          whileHover={{ y: -3, transition: { duration: 0.2 } }}
+          className="bg-[#0F1115] border border-white/8 rounded-xl p-5 shadow-lg"
+        >
           <div className="flex items-center justify-between text-xs text-zinc-400">
             <span>Needs Improvement & Critical</span>
             <AlertTriangle className="w-4 h-4 text-rose-400" />
@@ -264,9 +286,12 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
             <span className="font-mono-tabular text-rose-400">{metrics.criticalCount}</span> critical ·{' '}
             <span className="font-mono-tabular text-amber-400">{metrics.needsImprovementCount}</span> needs improvement
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5 hover:border-white/20 transition-colors">
+        <motion.div
+          whileHover={{ y: -3, transition: { duration: 0.2 } }}
+          className="bg-[#0F1115] border border-white/8 rounded-xl p-5 shadow-lg"
+        >
           <div className="flex items-center justify-between text-xs text-zinc-400">
             <span>Cumulative Targets vs Actuals</span>
             <Target className="w-4 h-4 text-[#D4AF37]" />
@@ -277,12 +302,17 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
           <div className="text-xs text-zinc-500 mt-2 font-mono-tabular">
             Target baseline: {metrics.totalTargetSum.toLocaleString('en-US', { maximumFractionDigits: 1 })}
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Empty State Prompt if no records exist */}
       {records.length === 0 ? (
-        <div className="bg-[#0F1115] border border-white/8 rounded-xl p-10 text-center space-y-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="bg-[#0F1115] border border-white/8 rounded-xl p-10 text-center space-y-4 shadow-xl"
+        >
           <div className="w-12 h-12 rounded-xl bg-[#FACC15]/10 border border-[#FACC15]/30 flex items-center justify-center text-[#FACC15] mx-auto">
             <Target className="w-6 h-6" />
           </div>
@@ -299,31 +329,40 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             {departments.length === 0 && isSuperAdmin && (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 type="button"
                 onClick={() => onNavigate('admin_portal')}
                 className="px-4 py-2.5 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-sm font-semibold transition-colors cursor-pointer"
               >
                 Open Admin Portal Setup
-              </button>
+              </motion.button>
             )}
             {isEditor && departments.length > 0 && (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 type="button"
                 onClick={() => onNavigate('kpi_entry')}
                 className="px-4 py-2.5 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-sm font-semibold transition-colors cursor-pointer"
               >
                 Enter First KPI Record
-              </button>
+              </motion.button>
             )}
           </div>
-        </div>
+        </motion.div>
       ) : (
         <>
           {/* Charts Row */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {/* Department-Wise Performance Comparison */}
-            <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5">
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+              className="bg-[#0F1115] border border-white/8 rounded-xl p-5 shadow-xl"
+            >
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-base font-bold text-white font-display">
@@ -385,10 +424,15 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            </div>
+            </motion.div>
 
             {/* Performance Trend Chart (Monthly / Quarterly / Annual) */}
-            <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5">
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.15 }}
+              className="bg-[#0F1115] border border-white/8 rounded-xl p-5 shadow-xl"
+            >
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div>
                   <h2 className="text-base font-bold text-white font-display">
@@ -448,11 +492,16 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-            </div>
+            </motion.div>
           </div>
 
           {/* Recent Submissions Table */}
-          <div className="bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            className="bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden shadow-xl"
+          >
             <div className="px-5 py-4 border-b border-white/8 flex items-center justify-between">
               <div>
                 <h2 className="text-base font-bold text-white font-display">
@@ -485,10 +534,16 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/6 text-[13px]">
-                  {filtered.slice(0, 8).map((r) => {
+                  {filtered.slice(0, 8).map((r, i) => {
                     const st = getStatusColor(r.status);
                     return (
-                      <tr key={r.id} className="hover:bg-white/[0.02] transition-colors">
+                      <motion.tr
+                        key={r.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.2, delay: i * 0.03 }}
+                        className="hover:bg-white/[0.02] transition-colors"
+                      >
                         <td className="py-3 px-4 font-medium text-zinc-100 max-w-[260px] truncate">
                           {r.kpiTitle}
                         </td>
@@ -506,7 +561,7 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
                           {r.achievementPct.toFixed(1)}%
                         </td>
                         <td className={`py-3 px-4 font-medium text-xs ${st.text}`}>{r.status}</td>
-                      </tr>
+                      </motion.tr>
                     );
                   })}
                   {filtered.length === 0 && (
@@ -519,9 +574,9 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
                 </tbody>
               </table>
             </div>
-          </div>
+          </motion.div>
         </>
       )}
-    </div>
+    </motion.div>
   );
 }
