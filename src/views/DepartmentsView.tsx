@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { motion } from 'motion/react';
 import {
   Bar,
   BarChart,
@@ -67,8 +68,8 @@ export function DepartmentsView({ onNavigate, onQuickCreateForDept }: Department
 
   if (departments.length === 0) {
     return (
-      <div className="bg-[#0F1115] border border-white/8 rounded-xl p-10 text-center space-y-4">
-        <Building2 className="w-10 h-10 text-[#FACC15] mx-auto" />
+      <div className="bg-[#0F1115] border border-white/8 rounded-xl p-10 text-center space-y-4 shadow-xl">
+        <Building2 className="w-10 h-10 text-[#FACC15] mx-auto animate-bounce" />
         <h2 className="text-xl font-bold text-white font-display">No Departments Accessible</h2>
         <p className="text-sm text-zinc-400 max-w-md mx-auto">
           {isSuperAdmin
@@ -89,7 +90,12 @@ export function DepartmentsView({ onNavigate, onQuickCreateForDept }: Department
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className="space-y-6"
+    >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white font-display">
@@ -101,14 +107,16 @@ export function DepartmentsView({ onNavigate, onQuickCreateForDept }: Department
         </div>
 
         {isEditor && activeDept && (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="button"
             onClick={() => onQuickCreateForDept(activeDept.id)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-lg shadow-[#FACC15]/10"
           >
             <FilePlus2 className="w-4 h-4" />
             Enter KPI for {activeDept.code}
-          </button>
+          </motion.button>
         )}
       </div>
 
@@ -117,26 +125,34 @@ export function DepartmentsView({ onNavigate, onQuickCreateForDept }: Department
         {departments.map((d) => {
           const isSelected = activeDept?.id === d.id;
           return (
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               key={d.id}
               type="button"
               onClick={() => setSelectedDeptId(d.id)}
               className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 isSelected
-                  ? 'bg-[#FACC15] text-black border-[#FACC15] font-semibold'
+                  ? 'bg-[#FACC15] text-black border-[#FACC15] font-semibold shadow-md'
                   : 'bg-[#0F1115] text-zinc-300 border-white/8 hover:border-[#FACC15]/40 hover:text-white'
               }`}
             >
               {d.code} · {d.name} {!d.isActive && '(Inactive)'}
-            </button>
+            </motion.button>
           );
         })}
       </div>
 
       {activeDept && (
-        <div className="space-y-6">
+        <motion.div
+          key={activeDept.id}
+          initial={{ opacity: 0, scale: 0.99 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.25 }}
+          className="space-y-6"
+        >
           {/* Department Summary Header */}
-          <div className="bg-[#0F1115] border border-white/8 rounded-xl p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="bg-[#0F1115] border border-white/8 rounded-xl p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-xl">
             <div className="space-y-1.5 max-w-2xl">
               <div className="text-xs text-[#D4AF37] font-medium">
                 {activeDept.code} · {activeDept.isActive ? 'Active Department' : 'Inactive Department'}
@@ -205,7 +221,7 @@ export function DepartmentsView({ onNavigate, onQuickCreateForDept }: Department
 
           {/* Departmental Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5">
+            <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5 shadow-xl">
               <div className="flex items-center gap-2 text-sm font-bold text-white font-display mb-4">
                 <TrendingUp className="w-4 h-4 text-[#FACC15]" />
                 Monthly Performance Trajectory
@@ -237,7 +253,7 @@ export function DepartmentsView({ onNavigate, onQuickCreateForDept }: Department
               </div>
             </div>
 
-            <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5">
+            <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5 shadow-xl">
               <div className="flex items-center gap-2 text-sm font-bold text-white font-display mb-4">
                 <Target className="w-4 h-4 text-[#D4AF37]" />
                 Quarterly Comparative Achievement
@@ -270,7 +286,7 @@ export function DepartmentsView({ onNavigate, onQuickCreateForDept }: Department
           </div>
 
           {/* Configured Departmental Targets */}
-          <div className="bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden">
+          <div className="bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden shadow-xl">
             <div className="px-5 py-4 border-b border-white/8">
               <h3 className="text-base font-bold text-white font-display">
                 Configured Departmental KPI Targets ({deptDefs.length})
@@ -316,7 +332,7 @@ export function DepartmentsView({ onNavigate, onQuickCreateForDept }: Department
           </div>
 
           {/* Departmental Historical Records */}
-          <div className="bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden">
+          <div className="bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden shadow-xl">
             <div className="px-5 py-4 border-b border-white/8">
               <h3 className="text-base font-bold text-white font-display">
                 Department Historical KPI Records ({deptRecords.length})
@@ -369,8 +385,8 @@ export function DepartmentsView({ onNavigate, onQuickCreateForDept }: Department
               </table>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }
