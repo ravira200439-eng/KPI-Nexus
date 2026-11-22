@@ -1,0 +1,502 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default-Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Global Security Primitives
+    // -------------------------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email is string
+        && request.auth.token.email.size() <= 120;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 180 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function safeEmailKey(email) {
+      return email.lower()
+        .replace('_', '_u_')
+        .replace('-', '_d_')
+        .replace('\\.', '_p_')
+        .replace('@', '_a_')
+        .replace('\\+', '_x_');
+    }
+
+    function currentEmailKey() {
+      return safeEmailKey(request.auth.token.email);
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && request.auth.token.email.lower() == 'ravira200439@gmail.com';
+    }
+
+    function permPath() {
+      return /databases/$(database)/documents/user_permissions/$(currentEmailKey());
+    }
+
+    function hasActivePerm() {
+      return isVerifiedUser()
+        && exists(permPath())
+        && get(permPath()).data.isActive == true;
+    }
+
+    function getPerm() {
+      return get(permPath()).data;
+    }
+
+    function isSuperAdmin() {
+      return isBootstrappedAdmin() || (hasActivePerm() && getPerm().role == 'super_admin');
+    }
+
+    function isMgmtViewer() {
+      return hasActivePerm() && getPerm().role == 'mgmt_viewer';
+    }
+
+    function isAuthorizedUser() {
+      return isBootstrappedAdmin() || hasActivePerm();
+    }
+
+    function canViewDept(deptId) {
+      return isSuperAdmin() || isMgmtViewer() || (hasActivePerm() && deptId in getPerm().departmentIds);
+    }
+
+    function canEditDept(deptId) {
+      return isSuperAdmin() || (hasActivePerm() && getPerm().role == 'dept_editor' && deptId in getPerm().departmentIds);
+    }
+
+    function isValidHttpsOrEmpty(val) {
+      return val is string && val.size() <= 500 && (val == '' || val.matches('^https://.+'));
+    }
+
+    // -------------------------------------------------------------------------
+    // Entity Validation Blueprints (Anti-Update-Gap)
+    // -------------------------------------------------------------------------
+    function isValidDepartment(data) {
+      return data.keys().hasAll(['id', 'name', 'code', 'description', 'headName', 'headEmail', 'isActive', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'code', 'description', 'headName', 'headEmail', 'isActive', 'createdBy', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id.size() <= 64
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 120
+        && data.code is string && data.code.size() >= 2 && data.code.size() <= 20 && data.code.matches('^[A-Z0-9_\\-]+$')
+        && data.description is string && data.description.size() <= 500
+        && data.headName is string && data.headName.size() <= 120
+        && data.headEmail is string && data.headEmail.size() <= 120
+        && data.isActive is bool
+        && data.createdBy is string && data.createdBy.size() <= 128
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserPermission(data) {
+      return data.keys().hasAll(['email', 'displayName', 'role', 'departmentIds', 'isActive', 'notes', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['email', 'displayName', 'role', 'departmentIds', 'isActive', 'notes', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.email is string && data.email.size() >= 5 && data.email.size() <= 120
+        && data.email.matches('^[a-zA-Z0-9._+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$')
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.role in ['super_admin', 'dept_editor', 'dept_viewer', 'mgmt_viewer']
+        && data.departmentIds is list && data.departmentIds.size() <= 50
+        && (data.departmentIds.size() == 0 || (data.departmentIds[0] is string && data.departmentIds[0].size() <= 64))
+        && data.isActive is bool
+        && data.notes is string && data.notes.size() <= 300
+        && data.createdBy is string && data.createdBy.size() <= 128
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'photoURL', 'lastLoginAt', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'lastLoginAt', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid) && data.uid == request.auth.uid && data.uid.size() <= 128
+        && data.email is string && data.email.size() <= 120 && data.email.lower() == request.auth.token.email.lower()
+        && data.displayName is string && data.displayName.size() <= 120
+        && isValidHttpsOrEmpty(data.photoURL)
+        && data.lastLoginAt is timestamp
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidKpiCategory(data) {
+      return data.keys().hasAll(['id', 'name', 'description', 'scope', 'departmentId', 'isActive', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'description', 'scope', 'departmentId', 'isActive', 'createdBy', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id.size() <= 64
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 100
+        && data.description is string && data.description.size() <= 300
+        && data.scope in ['global', 'department']
+        && data.departmentId is string && data.departmentId.size() <= 64
+        && (data.scope == 'global' ? data.departmentId == '' : isValidId(data.departmentId))
+        && data.isActive is bool
+        && data.createdBy is string && data.createdBy.size() <= 128
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidKpiDefinition(data) {
+      return data.keys().hasAll(['id', 'departmentId', 'departmentName', 'title', 'description', 'categoryId', 'categoryName', 'measurementType', 'unit', 'defaultTarget', 'calculationMethod', 'defaultPeriodType', 'isActive', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'departmentId', 'departmentName', 'title', 'description', 'categoryId', 'categoryName', 'measurementType', 'unit', 'defaultTarget', 'calculationMethod', 'defaultPeriodType', 'isActive', 'createdBy', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id.size() <= 64
+        && isValidId(data.departmentId) && data.departmentId.size() <= 64
+        && data.departmentName is string && data.departmentName.size() >= 2 && data.departmentName.size() <= 120
+        && data.title is string && data.title.size() >= 2 && data.title.size() <= 160
+        && data.description is string && data.description.size() <= 600
+        && data.categoryId is string && data.categoryId.size() <= 64
+        && data.categoryName is string && data.categoryName.size() <= 100
+        && data.measurementType in ['percentage', 'number', 'currency_lkr', 'time', 'completion', 'custom']
+        && data.unit is string && data.unit.size() >= 1 && data.unit.size() <= 40
+        && data.defaultTarget is number
+        && data.calculationMethod in ['higher_is_better', 'lower_is_better']
+        && data.defaultPeriodType in ['Monthly', 'Quarterly', 'Annual']
+        && data.isActive is bool
+        && data.createdBy is string && data.createdBy.size() <= 128
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidKpiRecord(data) {
+      return data.keys().hasAll(['id', 'departmentId', 'departmentName', 'definitionId', 'kpiTitle', 'kpiDescription', 'categoryId', 'categoryName', 'reportingPeriod', 'reportingMonth', 'reportingQuarter', 'reportingYear', 'measurementType', 'calculationMethod', 'unit', 'targetValue', 'actualValue', 'achievementPct', 'status', 'remarks', 'evidenceUrl', 'evidenceName', 'submittedByUid', 'submittedByEmail', 'submittedByName', 'submissionDate', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'departmentId', 'departmentName', 'definitionId', 'kpiTitle', 'kpiDescription', 'categoryId', 'categoryName', 'reportingPeriod', 'reportingMonth', 'reportingQuarter', 'reportingYear', 'measurementType', 'calculationMethod', 'unit', 'targetValue', 'actualValue', 'achievementPct', 'status', 'remarks', 'evidenceUrl', 'evidenceName', 'submittedByUid', 'submittedByEmail', 'submittedByName', 'submissionDate', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id.size() <= 64
+        && isValidId(data.departmentId) && data.departmentId.size() <= 64
+        && data.departmentName is string && data.departmentName.size() >= 2 && data.departmentName.size() <= 120
+        && data.definitionId is string && data.definitionId.size() <= 64
+        && data.kpiTitle is string && data.kpiTitle.size() >= 2 && data.kpiTitle.size() <= 160
+        && data.kpiDescription is string && data.kpiDescription.size() <= 800
+        && data.categoryId is string && data.categoryId.size() <= 64
+        && data.categoryName is string && data.categoryName.size() >= 1 && data.categoryName.size() <= 100
+        && data.reportingPeriod in ['Monthly', 'Quarterly', 'Annual']
+        && data.reportingMonth is int && data.reportingMonth >= 0 && data.reportingMonth <= 12
+        && data.reportingQuarter is int && data.reportingQuarter >= 0 && data.reportingQuarter <= 4
+        && data.reportingYear is int && data.reportingYear >= 2000 && data.reportingYear <= 2100
+        && data.measurementType in ['percentage', 'number', 'currency_lkr', 'time', 'completion', 'custom']
+        && data.calculationMethod in ['higher_is_better', 'lower_is_better']
+        && data.unit is string && data.unit.size() >= 1 && data.unit.size() <= 40
+        && data.targetValue is number
+        && data.actualValue is number
+        && data.achievementPct is number && data.achievementPct >= 0 && data.achievementPct <= 100000
+        && data.status in ['Target Achieved', 'Nearly Achieved', 'Needs Improvement', 'Critical']
+        && data.remarks is string && data.remarks.size() <= 1000
+        && isValidHttpsOrEmpty(data.evidenceUrl)
+        && data.evidenceName is string && data.evidenceName.size() <= 160
+        && data.submittedByUid is string && data.submittedByUid.size() <= 128
+        && data.submittedByEmail is string && data.submittedByEmail.size() <= 120
+        && data.submittedByName is string && data.submittedByName.size() <= 120
+        && data.submissionDate is timestamp
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidReportingPeriod(data) {
+      return data.keys().hasAll(['id', 'label', 'periodType', 'year', 'month', 'quarter', 'deadlineDate', 'isLocked', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'label', 'periodType', 'year', 'month', 'quarter', 'deadlineDate', 'isLocked', 'createdBy', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id.size() <= 64
+        && data.label is string && data.label.size() >= 2 && data.label.size() <= 80
+        && data.periodType in ['Monthly', 'Quarterly', 'Annual']
+        && data.year is int && data.year >= 2000 && data.year <= 2100
+        && data.month is int && data.month >= 0 && data.month <= 12
+        && data.quarter is int && data.quarter >= 0 && data.quarter <= 4
+        && data.deadlineDate is string && data.deadlineDate.size() <= 32
+        && data.isLocked is bool
+        && data.createdBy is string && data.createdBy.size() <= 128
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['id', 'type', 'title', 'message', 'departmentId', 'departmentName', 'recordId', 'readByUids', 'createdByUid', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'type', 'title', 'message', 'departmentId', 'departmentName', 'recordId', 'readByUids', 'createdByUid', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id.size() <= 64
+        && data.type in ['submission', 'update', 'deadline', 'missing_submission', 'critical_kpi']
+        && data.title is string && data.title.size() >= 2 && data.title.size() <= 160
+        && data.message is string && data.message.size() <= 500
+        && data.departmentId is string && data.departmentId.size() <= 64
+        && data.departmentName is string && data.departmentName.size() <= 120
+        && data.recordId is string && data.recordId.size() <= 64
+        && data.readByUids is list && data.readByUids.size() <= 100
+        && (data.readByUids.size() == 0 || (data.readByUids[0] is string && data.readByUids[0].size() <= 128))
+        && data.createdByUid is string && data.createdByUid.size() <= 128
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidActivityLog(data) {
+      return data.keys().hasAll(['id', 'actorUid', 'actorEmail', 'actorName', 'departmentId', 'departmentName', 'action', 'targetCollection', 'targetId', 'details', 'createdAt'])
+        && data.keys().hasOnly(['id', 'actorUid', 'actorEmail', 'actorName', 'departmentId', 'departmentName', 'action', 'targetCollection', 'targetId', 'details', 'createdAt'])
+        && isValidId(data.id) && data.id.size() <= 64
+        && data.actorUid is string && data.actorUid.size() <= 128
+        && data.actorEmail is string && data.actorEmail.size() <= 120
+        && data.actorName is string && data.actorName.size() <= 120
+        && data.departmentId is string && data.departmentId.size() <= 64
+        && data.departmentName is string && data.departmentName.size() <= 120
+        && data.action is string && data.action.size() >= 2 && data.action.size() <= 120
+        && data.targetCollection is string && data.targetCollection.size() <= 64
+        && data.targetId is string && data.targetId.size() <= 64
+        && data.details is string && data.details.size() <= 500
+        && data.createdAt is timestamp;
+    }
+
+    function isValidSystemSettings(data) {
+      return data.keys().hasAll(['companyName', 'appName', 'currency', 'thresholdAchieved', 'thresholdNearly', 'thresholdNeedsImprovement', 'defaultReportingYear', 'submissionReminderDays', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['companyName', 'appName', 'currency', 'thresholdAchieved', 'thresholdNearly', 'thresholdNeedsImprovement', 'defaultReportingYear', 'submissionReminderDays', 'updatedBy', 'updatedAt'])
+        && data.companyName is string && data.companyName.size() >= 2 && data.companyName.size() <= 120
+        && data.appName is string && data.appName.size() >= 2 && data.appName.size() <= 80
+        && data.currency is string && data.currency.size() >= 2 && data.currency.size() <= 16
+        && data.thresholdAchieved is number && data.thresholdAchieved >= 50 && data.thresholdAchieved <= 200
+        && data.thresholdNearly is number && data.thresholdNearly >= 10 && data.thresholdNearly < data.thresholdAchieved
+        && data.thresholdNeedsImprovement is number && data.thresholdNeedsImprovement >= 1 && data.thresholdNeedsImprovement < data.thresholdNearly
+        && data.defaultReportingYear is int && data.defaultReportingYear >= 2000 && data.defaultReportingYear <= 2100
+        && data.submissionReminderDays is int && data.submissionReminderDays >= 1 && data.submissionReminderDays <= 30
+        && data.updatedBy is string && data.updatedBy.size() <= 128
+        && data.updatedAt is timestamp;
+    }
+
+    // -------------------------------------------------------------------------
+    // Collection Rules
+    // -------------------------------------------------------------------------
+    match /test/connection {
+      allow get: if isVerifiedUser();
+      allow list, write: if false;
+    }
+
+    match /user_permissions/{emailKey} {
+      allow get: if isVerifiedUser() && isValidId(emailKey) && (isSuperAdmin() || emailKey == currentEmailKey());
+      allow list: if isSuperAdmin();
+      allow create: if isSuperAdmin()
+        && isValidId(emailKey)
+        && isValidUserPermission(incoming())
+        && safeEmailKey(incoming().email) == emailKey
+        && incoming().createdBy == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSuperAdmin()
+        && isValidId(emailKey)
+        && isValidUserPermission(incoming())
+        && incoming().email == existing().email
+        && incoming().createdBy == existing().createdBy
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'role', 'departmentIds', 'isActive', 'notes', 'updatedAt']);
+      allow delete: if isSuperAdmin() && isValidId(emailKey);
+    }
+
+    match /users/{userId} {
+      allow get: if isAuthorizedUser() && isValidId(userId) && (isSuperAdmin() || request.auth.uid == userId);
+      allow list: if isSuperAdmin();
+      allow create: if isAuthorizedUser()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidUserProfile(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && incoming().lastLoginAt == request.time;
+      allow update: if isAuthorizedUser()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().lastLoginAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'lastLoginAt', 'updatedAt']);
+      allow delete: if isSuperAdmin() && isValidId(userId);
+    }
+
+    match /departments/{departmentId} {
+      allow get: if isAuthorizedUser() && isValidId(departmentId) && canViewDept(departmentId);
+      allow list: if isAuthorizedUser() && (isSuperAdmin() || isMgmtViewer() || (resource.data.id in getPerm().departmentIds));
+      allow create: if isSuperAdmin()
+        && isValidId(departmentId)
+        && isValidDepartment(incoming())
+        && incoming().id == departmentId
+        && incoming().createdBy == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSuperAdmin()
+        && isValidId(departmentId)
+        && isValidDepartment(incoming())
+        && incoming().id == existing().id
+        && incoming().createdBy == existing().createdBy
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'code', 'description', 'headName', 'headEmail', 'isActive', 'updatedAt']);
+      allow delete: if isSuperAdmin() && isValidId(departmentId);
+    }
+
+    match /kpi_categories/{categoryId} {
+      allow get: if isAuthorizedUser() && isValidId(categoryId) && (existing().scope == 'global' || canViewDept(existing().departmentId));
+      allow list: if isAuthorizedUser() && (isSuperAdmin() || isMgmtViewer() || resource.data.scope == 'global' || (resource.data.departmentId in getPerm().departmentIds));
+      allow create: if isSuperAdmin()
+        && isValidId(categoryId)
+        && isValidKpiCategory(incoming())
+        && incoming().id == categoryId
+        && incoming().createdBy == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSuperAdmin()
+        && isValidId(categoryId)
+        && isValidKpiCategory(incoming())
+        && incoming().id == existing().id
+        && incoming().createdBy == existing().createdBy
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'scope', 'departmentId', 'isActive', 'updatedAt']);
+      allow delete: if isSuperAdmin() && isValidId(categoryId);
+    }
+
+    match /kpi_definitions/{definitionId} {
+      allow get: if isAuthorizedUser() && isValidId(definitionId) && canViewDept(existing().departmentId);
+      allow list: if isAuthorizedUser() && (isSuperAdmin() || isMgmtViewer() || (resource.data.departmentId in getPerm().departmentIds));
+      allow create: if isSuperAdmin()
+        && isValidId(definitionId)
+        && isValidKpiDefinition(incoming())
+        && incoming().id == definitionId
+        && exists(/databases/$(database)/documents/departments/$(incoming().departmentId))
+        && incoming().createdBy == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSuperAdmin()
+        && isValidId(definitionId)
+        && isValidKpiDefinition(incoming())
+        && incoming().id == existing().id
+        && incoming().departmentId == existing().departmentId
+        && incoming().createdBy == existing().createdBy
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['departmentName', 'title', 'description', 'categoryId', 'categoryName', 'measurementType', 'unit', 'defaultTarget', 'calculationMethod', 'defaultPeriodType', 'isActive', 'updatedAt']);
+      allow delete: if isSuperAdmin() && isValidId(definitionId);
+    }
+
+    match /kpi_records/{recordId} {
+      allow get: if isAuthorizedUser() && isValidId(recordId) && canViewDept(existing().departmentId);
+      allow list: if isAuthorizedUser() && (isSuperAdmin() || isMgmtViewer() || (resource.data.departmentId in getPerm().departmentIds));
+      allow create: if isAuthorizedUser()
+        && isValidId(recordId)
+        && isValidKpiRecord(incoming())
+        && incoming().id == recordId
+        && exists(/databases/$(database)/documents/departments/$(incoming().departmentId))
+        && canEditDept(incoming().departmentId)
+        && incoming().submittedByUid == request.auth.uid
+        && incoming().submittedByEmail.lower() == request.auth.token.email.lower()
+        && incoming().submissionDate == request.time
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isAuthorizedUser()
+        && isValidId(recordId)
+        && isValidKpiRecord(incoming())
+        && incoming().id == existing().id
+        && incoming().departmentId == existing().departmentId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isSuperAdmin() || (
+            canEditDept(existing().departmentId)
+            && incoming().submittedByUid == request.auth.uid
+            && incoming().submittedByEmail.lower() == request.auth.token.email.lower()
+            && incoming().submissionDate == request.time
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'definitionId', 'kpiTitle', 'kpiDescription', 'categoryId', 'categoryName',
+              'reportingPeriod', 'reportingMonth', 'reportingQuarter', 'reportingYear',
+              'measurementType', 'calculationMethod', 'unit', 'targetValue', 'actualValue',
+              'achievementPct', 'status', 'remarks', 'evidenceUrl', 'evidenceName',
+              'submittedByUid', 'submittedByEmail', 'submittedByName', 'submissionDate', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isAuthorizedUser()
+        && isValidId(recordId)
+        && canEditDept(existing().departmentId);
+    }
+
+    match /reporting_periods/{periodId} {
+      allow get: if isAuthorizedUser() && isValidId(periodId);
+      allow list: if isAuthorizedUser();
+      allow create: if isSuperAdmin()
+        && isValidId(periodId)
+        && isValidReportingPeriod(incoming())
+        && incoming().id == periodId
+        && incoming().createdBy == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSuperAdmin()
+        && isValidId(periodId)
+        && isValidReportingPeriod(incoming())
+        && incoming().id == existing().id
+        && incoming().createdBy == existing().createdBy
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['label', 'periodType', 'year', 'month', 'quarter', 'deadlineDate', 'isLocked', 'updatedAt']);
+      allow delete: if isSuperAdmin() && isValidId(periodId);
+    }
+
+    match /notifications/{notificationId} {
+      allow get: if isAuthorizedUser() && isValidId(notificationId) && (isSuperAdmin() || isMgmtViewer() || existing().departmentId == '' || canViewDept(existing().departmentId));
+      allow list: if isAuthorizedUser() && (isSuperAdmin() || isMgmtViewer() || resource.data.departmentId == '' || (resource.data.departmentId in getPerm().departmentIds));
+      allow create: if isAuthorizedUser()
+        && isValidId(notificationId)
+        && isValidNotification(incoming())
+        && incoming().id == notificationId
+        && incoming().createdByUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (isSuperAdmin() || (incoming().departmentId != '' && canEditDept(incoming().departmentId)));
+      allow update: if isAuthorizedUser()
+        && isValidId(notificationId)
+        && isValidNotification(incoming())
+        && incoming().id == existing().id
+        && incoming().createdByUid == existing().createdByUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (isSuperAdmin() || isMgmtViewer() || existing().departmentId == '' || canViewDept(existing().departmentId))
+        && incoming().diff(existing()).affectedKeys().hasOnly(['readByUids', 'updatedAt']);
+      allow delete: if isSuperAdmin() && isValidId(notificationId);
+    }
+
+    match /activity_logs/{logId} {
+      allow get: if isSuperAdmin() && isValidId(logId);
+      allow list: if isSuperAdmin();
+      allow create: if isAuthorizedUser()
+        && isValidId(logId)
+        && isValidActivityLog(incoming())
+        && incoming().id == logId
+        && incoming().actorUid == request.auth.uid
+        && incoming().actorEmail.lower() == request.auth.token.email.lower()
+        && incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    match /system_settings/{settingId} {
+      allow get: if isAuthorizedUser() && isValidId(settingId);
+      allow list: if isAuthorizedUser();
+      allow create: if isSuperAdmin()
+        && isValidId(settingId)
+        && isValidSystemSettings(incoming())
+        && incoming().updatedBy == request.auth.uid
+        && incoming().updatedAt == request.time;
+      allow update: if isSuperAdmin()
+        && isValidId(settingId)
+        && isValidSystemSettings(incoming())
+        && incoming().updatedBy == request.auth.uid
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['companyName', 'appName', 'currency', 'thresholdAchieved', 'thresholdNearly', 'thresholdNeedsImprovement', 'defaultReportingYear', 'submissionReminderDays', 'updatedBy', 'updatedAt']);
+      allow delete: if isSuperAdmin() && isValidId(settingId);
+    }
+  }
+}

@@ -1,0 +1,248 @@
+{
+  "entities": {
+    "Department": {
+      "title": "Department",
+      "description": "Corporate department workspace within X Guard (Private) Limited.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 2, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "code": { "type": "string", "minLength": 2, "maxLength": 20, "pattern": "^[A-Z0-9_\\-]+$" },
+        "description": { "type": "string", "maxLength": 500 },
+        "headName": { "type": "string", "maxLength": 120 },
+        "headEmail": { "type": "string", "maxLength": 120 },
+        "isActive": { "type": "boolean" },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "code", "description", "headName", "headEmail", "isActive", "createdBy", "createdAt", "updatedAt"]
+    },
+    "UserPermission": {
+      "title": "UserPermission",
+      "description": "Email-keyed Role-Based Access Control authorization record managed by Super Administrators.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "minLength": 5, "maxLength": 120 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "role": { "type": "string", "enum": ["super_admin", "dept_editor", "dept_viewer", "mgmt_viewer"] },
+        "departmentIds": { "type": "array" },
+        "isActive": { "type": "boolean" },
+        "notes": { "type": "string", "maxLength": 300 },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "displayName", "role", "departmentIds", "isActive", "notes", "createdBy", "createdAt", "updatedAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated Google profile record isolated by UID.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 120 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "lastLoginAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "photoURL", "lastLoginAt", "createdAt", "updatedAt"]
+    },
+    "KpiCategory": {
+      "title": "KpiCategory",
+      "description": "KPI classification category (global or department-scoped).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 2, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 300 },
+        "scope": { "type": "string", "enum": ["global", "department"] },
+        "departmentId": { "type": "string", "maxLength": 64 },
+        "isActive": { "type": "boolean" },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "description", "scope", "departmentId", "isActive", "createdBy", "createdAt", "updatedAt"]
+    },
+    "KpiDefinition": {
+      "title": "KpiDefinition",
+      "description": "Predefined KPI template and target configured per department.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 2, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "departmentId": { "type": "string", "minLength": 2, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "departmentName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "title": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "description": { "type": "string", "maxLength": 600 },
+        "categoryId": { "type": "string", "maxLength": 64 },
+        "categoryName": { "type": "string", "maxLength": 100 },
+        "measurementType": { "type": "string", "enum": ["percentage", "number", "currency_lkr", "time", "completion", "custom"] },
+        "unit": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "defaultTarget": { "type": "number" },
+        "calculationMethod": { "type": "string", "enum": ["higher_is_better", "lower_is_better"] },
+        "defaultPeriodType": { "type": "string", "enum": ["Monthly", "Quarterly", "Annual"] },
+        "isActive": { "type": "boolean" },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "departmentId", "departmentName", "title", "description", "categoryId", "categoryName", "measurementType", "unit", "defaultTarget", "calculationMethod", "defaultPeriodType", "isActive", "createdBy", "createdAt", "updatedAt"]
+    },
+    "KpiRecord": {
+      "title": "KpiRecord",
+      "description": "Submitted departmental KPI performance record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 2, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "departmentId": { "type": "string", "minLength": 2, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "departmentName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "definitionId": { "type": "string", "maxLength": 64 },
+        "kpiTitle": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "kpiDescription": { "type": "string", "maxLength": 800 },
+        "categoryId": { "type": "string", "maxLength": 64 },
+        "categoryName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "reportingPeriod": { "type": "string", "enum": ["Monthly", "Quarterly", "Annual"] },
+        "reportingMonth": { "type": "number" },
+        "reportingQuarter": { "type": "number" },
+        "reportingYear": { "type": "number" },
+        "measurementType": { "type": "string", "enum": ["percentage", "number", "currency_lkr", "time", "completion", "custom"] },
+        "calculationMethod": { "type": "string", "enum": ["higher_is_better", "lower_is_better"] },
+        "unit": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "targetValue": { "type": "number" },
+        "actualValue": { "type": "number" },
+        "achievementPct": { "type": "number" },
+        "status": { "type": "string", "enum": ["Target Achieved", "Nearly Achieved", "Needs Improvement", "Critical"] },
+        "remarks": { "type": "string", "maxLength": 1000 },
+        "evidenceUrl": { "type": "string", "maxLength": 500 },
+        "evidenceName": { "type": "string", "maxLength": 160 },
+        "submittedByUid": { "type": "string", "maxLength": 128 },
+        "submittedByEmail": { "type": "string", "maxLength": 120 },
+        "submittedByName": { "type": "string", "maxLength": 120 },
+        "submissionDate": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "departmentId", "departmentName", "definitionId", "kpiTitle", "kpiDescription", "categoryId", "categoryName", "reportingPeriod", "reportingMonth", "reportingQuarter", "reportingYear", "measurementType", "calculationMethod", "unit", "targetValue", "actualValue", "achievementPct", "status", "remarks", "evidenceUrl", "evidenceName", "submittedByUid", "submittedByEmail", "submittedByName", "submissionDate", "createdAt", "updatedAt"]
+    },
+    "ReportingPeriod": {
+      "title": "ReportingPeriod",
+      "description": "Reporting window and deadline schedule.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 2, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "label": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "periodType": { "type": "string", "enum": ["Monthly", "Quarterly", "Annual"] },
+        "year": { "type": "number" },
+        "month": { "type": "number" },
+        "quarter": { "type": "number" },
+        "deadlineDate": { "type": "string", "maxLength": 32 },
+        "isLocked": { "type": "boolean" },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "label", "periodType", "year", "month", "quarter", "deadlineDate", "isLocked", "createdBy", "createdAt", "updatedAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Internal KPI alert notification.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 2, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "type": { "type": "string", "enum": ["submission", "update", "deadline", "missing_submission", "critical_kpi"] },
+        "title": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "message": { "type": "string", "maxLength": 500 },
+        "departmentId": { "type": "string", "maxLength": 64 },
+        "departmentName": { "type": "string", "maxLength": 120 },
+        "recordId": { "type": "string", "maxLength": 64 },
+        "readByUids": { "type": "array" },
+        "createdByUid": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "type", "title", "message", "departmentId", "departmentName", "recordId", "readByUids", "createdByUid", "createdAt", "updatedAt"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Immutable system audit log.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 2, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "actorUid": { "type": "string", "maxLength": 128 },
+        "actorEmail": { "type": "string", "maxLength": 120 },
+        "actorName": { "type": "string", "maxLength": 120 },
+        "departmentId": { "type": "string", "maxLength": 64 },
+        "departmentName": { "type": "string", "maxLength": 120 },
+        "action": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "targetCollection": { "type": "string", "maxLength": 64 },
+        "targetId": { "type": "string", "maxLength": 64 },
+        "details": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "actorUid", "actorEmail", "actorName", "departmentId", "departmentName", "action", "targetCollection", "targetId", "details", "createdAt"]
+    },
+    "SystemSettings": {
+      "title": "SystemSettings",
+      "description": "Global KPI Nexus threshold and governance configuration.",
+      "type": "object",
+      "properties": {
+        "companyName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "appName": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "currency": { "type": "string", "minLength": 2, "maxLength": 16 },
+        "thresholdAchieved": { "type": "number" },
+        "thresholdNearly": { "type": "number" },
+        "thresholdNeedsImprovement": { "type": "number" },
+        "defaultReportingYear": { "type": "number" },
+        "submissionReminderDays": { "type": "number" },
+        "updatedBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyName", "appName", "currency", "thresholdAchieved", "thresholdNearly", "thresholdNeedsImprovement", "defaultReportingYear", "submissionReminderDays", "updatedBy", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/departments/{departmentId}": {
+      "schema": { "$ref": "#/entities/Department" },
+      "description": "Corporate departments managed by Super Administrators."
+    },
+    "/user_permissions/{emailKey}": {
+      "schema": { "$ref": "#/entities/UserPermission" },
+      "description": "Email-based RBAC authorization records."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Authenticated Google user profile documents."
+    },
+    "/kpi_categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/KpiCategory" },
+      "description": "Global and departmental KPI categories."
+    },
+    "/kpi_definitions/{definitionId}": {
+      "schema": { "$ref": "#/entities/KpiDefinition" },
+      "description": "Predefined KPI templates and target formulas per department."
+    },
+    "/kpi_records/{recordId}": {
+      "schema": { "$ref": "#/entities/KpiRecord" },
+      "description": "Submitted departmental KPI performance records."
+    },
+    "/reporting_periods/{periodId}": {
+      "schema": { "$ref": "#/entities/ReportingPeriod" },
+      "description": "Configured reporting windows and deadlines."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Departmental and admin alert notifications."
+    },
+    "/activity_logs/{logId}": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Append-only system audit trail."
+    },
+    "/system_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/SystemSettings" },
+      "description": "Global KPI Nexus threshold and platform configuration."
+    }
+  }
+}
