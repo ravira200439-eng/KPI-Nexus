@@ -17,13 +17,24 @@ interface KpiEntryViewProps {
   onFinished?: () => void;
 }
 
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (!(err instanceof Error)) return fallback;
+  try {
+    const parsed = JSON.parse(err.message);
+    if (parsed && typeof parsed.error === 'string') return parsed.error;
+  } catch {
+    // Plain error message
+  }
+  return err.message || fallback;
+}
+
 export function KpiEntryView({
   preselectedDepartmentId,
   editingRecord,
   onFinished,
 }: KpiEntryViewProps) {
   const { user, permission, isSuperAdmin } = useAuth();
-  const { activeDepartments, definitions, reportingPeriods, settings } = useData();
+  const { activeDepartments, definitions, records, reportingPeriods, settings } = useData();
 
   const editableDepartments = useMemo(() => {
     if (isSuperAdmin) return activeDepartments;
@@ -47,12 +58,24 @@ export function KpiEntryView({
     editingRecord?.reportingYear || settings.defaultReportingYear || new Date().getFullYear()
   );
 
-  // Map of definitionId -> { achievementPct: string, remarks: string }
+  // Map of definitionId -> { pct: string, remarks: string }
   const [formDataMap, setFormDataMap] = useState<Record<string, { pct: string; remarks: string }>>({});
 
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (editingRecord) {
+      setDepartmentId(editingRecord.departmentId);
+      setReportingPeriod(editingRecord.reportingPeriod);
+      if (editingRecord.reportingMonth) setReportingMonth(editingRecord.reportingMonth);
+      if (editingRecord.reportingQuarter) setReportingQuarter(editingRecord.reportingQuarter);
+      setReportingYear(editingRecord.reportingYear);
+    } else if (preselectedDepartmentId) {
+      setDepartmentId(preselectedDepartmentId);
+    }
+  }, [editingRecord, preselectedDepartmentId]);
 
   useEffect(() => {
     if (!departmentId && editableDepartments.length > 0) {
@@ -65,14 +88,58 @@ export function KpiEntryView({
     [definitions, departmentId]
   );
 
-  // Initialize form inputs when deptDefinitions change
+  const normalizedPeriodKeys = useMemo(() => {
+    const monthInt = reportingPeriod === 'Monthly' ? Math.round(reportingMonth) : 0;
+    const quarterInt =
+      reportingPeriod === 'Annual'
+        ? 0
+        : reportingPeriod === 'Quarterly'
+          ? Math.round(reportingQuarter)
+          : Math.ceil(Math.max(1, monthInt) / 3);
+    const yearInt = Math.round(reportingYear);
+    return { monthInt, quarterInt, yearInt };
+  }, [reportingPeriod, reportingMonth, reportingQuarter, reportingYear]);
+
+  const existingRecordsByDefId = useMemo(() => {
+    const map = new Map<string, KpiRecord>();
+    records.forEach((r) => {
+      if (
+        r.departmentId === departmentId &&
+        r.reportingPeriod === reportingPeriod &&
+        r.reportingMonth === normalizedPeriodKeys.monthInt &&
+        r.reportingQuarter === normalizedPeriodKeys.quarterInt &&
+        r.reportingYear === normalizedPeriodKeys.yearInt &&
+        r.definitionId
+      ) {
+        if (!map.has(r.definitionId)) {
+          map.set(r.definitionId, r);
+        }
+      }
+    });
+    return map;
+  }, [records, departmentId, reportingPeriod, normalizedPeriodKeys]);
+
+  // Initialize form inputs when deptDefinitions or selected period's existing records change
   useEffect(() => {
     const map: Record<string, { pct: string; remarks: string }> = {};
     deptDefinitions.forEach((def) => {
-      map[def.id] = { pct: '100', remarks: '' };
+      if (editingRecord && editingRecord.definitionId === def.id) {
+        map[def.id] = {
+          pct: String(editingRecord.achievementPct),
+          remarks: editingRecord.remarks || '',
+        };
+      } else {
+        const existing = existingRecordsByDefId.get(def.id);
+        map[def.id] = existing
+          ? {
+              pct: String(existing.achievementPct),
+              remarks: existing.remarks || '',
+            }
+          : { pct: '100', remarks: '' };
+      }
     });
     setFormDataMap(map);
-  }, [deptDefinitions]);
+  }, [deptDefinitions, existingRecordsByDefId, editingRecord]);
 
   const isPeriodLocked = useMemo(() => {
     return reportingPeriods.some(
@@ -114,7 +181,7 @@ export function KpiEntryView({
     }
     if (deptDefinitions.length === 0) {
       setErrorMsg(
-        'No master KPIs have been configured for this department by Administration. Please configure them in the Admin Portal -> KPI Configuration.'
+        'No master KPIs have been configured for this department by Administration. Please configure them in Admin Portal -> KPI Configuration.'
       );
       return;
     }
@@ -128,6 +195,9 @@ export function KpiEntryView({
 
     setSubmitting(true);
     try {
+      let createdCount = 0;
+      let updatedCount = 0;
+
       for (const def of deptDefinitions) {
         const entry = formDataMap[def.id];
         const pctNum = Number(entry?.pct ?? '100');
@@ -137,16 +207,6 @@ export function KpiEntryView({
 
         const targetValue = 100;
         const actualValue = pctNum;
-        const achievementPct = pctNum;
-        const status = classifyKpiStatus(achievementPct, settings);
-
-        const monthInt = reportingPeriod === 'Monthly' ? Math.round(reportingMonth) : 0;
-        const quarterInt =
-          reportingPeriod === 'Annual'
-            ? 0
-            : reportingPeriod === 'Quarterly'
-              ? Math.round(reportingQuarter)
-              : Math.ceil(Math.max(1, monthInt) / 3);
 
         const payload = {
           departmentId,
@@ -154,19 +214,17 @@ export function KpiEntryView({
           definitionId: def.id,
           kpiTitle: def.title,
           kpiDescription: def.description || def.title,
-          categoryId: def.categoryId,
-          categoryName: def.categoryName,
+          categoryId: def.categoryId || 'general',
+          categoryName: def.categoryName || 'General',
           reportingPeriod,
-          reportingMonth: monthInt,
-          reportingQuarter: quarterInt,
-          reportingYear: Math.round(reportingYear),
-          measurementType: def.measurementType,
-          calculationMethod: def.calculationMethod,
+          reportingMonth: normalizedPeriodKeys.monthInt,
+          reportingQuarter: normalizedPeriodKeys.quarterInt,
+          reportingYear: normalizedPeriodKeys.yearInt,
+          measurementType: 'percentage' as const,
+          calculationMethod: 'higher_is_better' as const,
           unit: '%',
           targetValue,
           actualValue,
-          achievementPct,
-          status,
           remarks: (entry?.remarks || '').trim(),
           evidenceUrl: '',
           evidenceName: '',
@@ -174,15 +232,31 @@ export function KpiEntryView({
           employeeName: def.employeeName || '',
         };
 
-        await createKpiRecord(actor, payload, settings);
+        const targetRecordId =
+          editingRecord && editingRecord.definitionId === def.id
+            ? editingRecord.id
+            : existingRecordsByDefId.get(def.id)?.id;
+
+        if (targetRecordId) {
+          await updateKpiRecord(actor, targetRecordId, payload, settings);
+          updatedCount += 1;
+        } else {
+          await createKpiRecord(actor, payload, settings);
+          createdCount += 1;
+        }
       }
 
-      setSuccessMsg(`Successfully submitted all ${deptDefinitions.length} department KPI records for ${reportingPeriod} (${reportingYear}).`);
+      const summaryParts: string[] = [];
+      if (createdCount > 0) summaryParts.push(`${createdCount} created`);
+      if (updatedCount > 0) summaryParts.push(`${updatedCount} updated`);
+      setSuccessMsg(
+        `Successfully saved ${deptDefinitions.length} department KPI record(s) (${summaryParts.join(', ')}) for ${reportingPeriod} (${reportingYear}).`
+      );
       if (onFinished) {
         setTimeout(onFinished, 1200);
       }
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Unable to save KPI records.');
+      setErrorMsg(extractErrorMessage(err, 'Unable to save KPI records.'));
     } finally {
       setSubmitting(false);
     }

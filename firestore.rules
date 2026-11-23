@@ -151,7 +151,7 @@ service cloud.firestore {
 
     function isValidKpiDefinition(data) {
       return data.keys().hasAll(['id', 'departmentId', 'departmentName', 'title', 'description', 'categoryId', 'categoryName', 'measurementType', 'unit', 'defaultTarget', 'calculationMethod', 'defaultPeriodType', 'isActive', 'createdBy', 'createdAt', 'updatedAt'])
-        && data.keys().hasOnly(['id', 'departmentId', 'departmentName', 'title', 'description', 'categoryId', 'categoryName', 'measurementType', 'unit', 'defaultTarget', 'calculationMethod', 'defaultPeriodType', 'isActive', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'departmentId', 'departmentName', 'title', 'description', 'categoryId', 'categoryName', 'measurementType', 'unit', 'defaultTarget', 'calculationMethod', 'defaultPeriodType', 'isEmployeeSpecific', 'employeeName', 'isActive', 'createdBy', 'createdAt', 'updatedAt'])
         && isValidId(data.id) && data.id.size() <= 64
         && isValidId(data.departmentId) && data.departmentId.size() <= 64
         && data.departmentName is string && data.departmentName.size() >= 2 && data.departmentName.size() <= 120
@@ -164,6 +164,8 @@ service cloud.firestore {
         && data.defaultTarget is number
         && data.calculationMethod in ['higher_is_better', 'lower_is_better']
         && data.defaultPeriodType in ['Monthly', 'Quarterly', 'Annual']
+        && (!('isEmployeeSpecific' in data) || data.isEmployeeSpecific is bool)
+        && (!('employeeName' in data) || (data.employeeName is string && data.employeeName.size() <= 100))
         && data.isActive is bool
         && data.createdBy is string && data.createdBy.size() <= 128
         && data.createdAt is timestamp
@@ -172,7 +174,7 @@ service cloud.firestore {
 
     function isValidKpiRecord(data) {
       return data.keys().hasAll(['id', 'departmentId', 'departmentName', 'definitionId', 'kpiTitle', 'kpiDescription', 'categoryId', 'categoryName', 'reportingPeriod', 'reportingMonth', 'reportingQuarter', 'reportingYear', 'measurementType', 'calculationMethod', 'unit', 'targetValue', 'actualValue', 'achievementPct', 'status', 'remarks', 'evidenceUrl', 'evidenceName', 'submittedByUid', 'submittedByEmail', 'submittedByName', 'submissionDate', 'createdAt', 'updatedAt'])
-        && data.keys().hasOnly(['id', 'departmentId', 'departmentName', 'definitionId', 'kpiTitle', 'kpiDescription', 'categoryId', 'categoryName', 'reportingPeriod', 'reportingMonth', 'reportingQuarter', 'reportingYear', 'measurementType', 'calculationMethod', 'unit', 'targetValue', 'actualValue', 'achievementPct', 'status', 'remarks', 'evidenceUrl', 'evidenceName', 'submittedByUid', 'submittedByEmail', 'submittedByName', 'submissionDate', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'departmentId', 'departmentName', 'definitionId', 'kpiTitle', 'kpiDescription', 'categoryId', 'categoryName', 'reportingPeriod', 'reportingMonth', 'reportingQuarter', 'reportingYear', 'measurementType', 'calculationMethod', 'unit', 'targetValue', 'actualValue', 'achievementPct', 'status', 'remarks', 'evidenceUrl', 'evidenceName', 'isEmployeeSpecific', 'employeeName', 'submittedByUid', 'submittedByEmail', 'submittedByName', 'submissionDate', 'createdAt', 'updatedAt'])
         && isValidId(data.id) && data.id.size() <= 64
         && isValidId(data.departmentId) && data.departmentId.size() <= 64
         && data.departmentName is string && data.departmentName.size() >= 2 && data.departmentName.size() <= 120
@@ -195,6 +197,8 @@ service cloud.firestore {
         && data.remarks is string && data.remarks.size() <= 1000
         && isValidHttpsOrEmpty(data.evidenceUrl)
         && data.evidenceName is string && data.evidenceName.size() <= 160
+        && (!('isEmployeeSpecific' in data) || data.isEmployeeSpecific is bool)
+        && (!('employeeName' in data) || (data.employeeName is string && data.employeeName.size() <= 100))
         && data.submittedByUid is string && data.submittedByUid.size() <= 128
         && data.submittedByEmail is string && data.submittedByEmail.size() <= 120
         && data.submittedByName is string && data.submittedByName.size() <= 120
@@ -380,7 +384,7 @@ service cloud.firestore {
         && incoming().createdBy == existing().createdBy
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time
-        && incoming().diff(existing()).affectedKeys().hasOnly(['departmentName', 'title', 'description', 'categoryId', 'categoryName', 'measurementType', 'unit', 'defaultTarget', 'calculationMethod', 'defaultPeriodType', 'isActive', 'updatedAt']);
+        && incoming().diff(existing()).affectedKeys().hasOnly(['departmentName', 'title', 'description', 'categoryId', 'categoryName', 'measurementType', 'unit', 'defaultTarget', 'calculationMethod', 'defaultPeriodType', 'isEmployeeSpecific', 'employeeName', 'isActive', 'updatedAt']);
       allow delete: if isSuperAdmin() && isValidId(definitionId);
     }
 
@@ -416,6 +420,7 @@ service cloud.firestore {
               'reportingPeriod', 'reportingMonth', 'reportingQuarter', 'reportingYear',
               'measurementType', 'calculationMethod', 'unit', 'targetValue', 'actualValue',
               'achievementPct', 'status', 'remarks', 'evidenceUrl', 'evidenceName',
+              'isEmployeeSpecific', 'employeeName',
               'submittedByUid', 'submittedByEmail', 'submittedByName', 'submissionDate', 'updatedAt'
             ])
           )

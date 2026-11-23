@@ -473,6 +473,8 @@ export async function updateKpiDefinition(
     defaultTarget: number;
     calculationMethod: CalculationMethod;
     defaultPeriodType: ReportingPeriodType;
+    isEmployeeSpecific?: boolean;
+    employeeName?: string;
     isActive: boolean;
   }
 ): Promise<void> {
@@ -488,6 +490,8 @@ export async function updateKpiDefinition(
       defaultTarget: Number(input.defaultTarget) || 0,
       calculationMethod: input.calculationMethod,
       defaultPeriodType: input.defaultPeriodType,
+      isEmployeeSpecific: Boolean(input.isEmployeeSpecific),
+      employeeName: clampStr(input.employeeName || '', 100),
       isActive: input.isActive,
       updatedAt: serverTimestamp(),
     });
@@ -546,6 +550,8 @@ export interface KpiRecordInput {
   remarks: string;
   evidenceUrl: string;
   evidenceName: string;
+  isEmployeeSpecific?: boolean;
+  employeeName?: string;
 }
 
 export async function createKpiRecord(
@@ -596,6 +602,8 @@ export async function createKpiRecord(
       remarks: clampStr(input.remarks, 1000),
       evidenceUrl: clampStr(input.evidenceUrl, 500),
       evidenceName: clampStr(input.evidenceName, 160),
+      isEmployeeSpecific: Boolean(input.isEmployeeSpecific),
+      employeeName: clampStr(input.employeeName || '', 100),
       submittedByUid: clampStr(actor.uid, 128),
       submittedByEmail: clampStr(actor.email.toLowerCase(), 120),
       submittedByName: clampStr(actor.displayName || actor.email, 120),
@@ -675,6 +683,8 @@ export async function updateKpiRecord(
       remarks: clampStr(input.remarks, 1000),
       evidenceUrl: clampStr(input.evidenceUrl, 500),
       evidenceName: clampStr(input.evidenceName, 160),
+      isEmployeeSpecific: Boolean(input.isEmployeeSpecific),
+      employeeName: clampStr(input.employeeName || '', 100),
       submittedByUid: clampStr(actor.uid, 128),
       submittedByEmail: clampStr(actor.email.toLowerCase(), 120),
       submittedByName: clampStr(actor.displayName || actor.email, 120),

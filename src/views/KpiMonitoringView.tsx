@@ -37,7 +37,7 @@ export function KpiMonitoringView({ onEditRecord }: KpiMonitoringViewProps) {
       if (statusFilter !== 'all' && r.status !== statusFilter) return false;
       if (periodFilter !== 'all' && r.reportingPeriod !== periodFilter) return false;
       if (q) {
-        const hay = `${r.kpiTitle} ${r.departmentName} ${r.categoryName} ${r.submittedByEmail} ${r.remarks}`.toLowerCase();
+        const hay = `${r.kpiTitle} ${r.departmentName} ${r.categoryName} ${r.employeeName || ''} ${r.submittedByEmail} ${r.remarks}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -150,7 +150,14 @@ export function KpiMonitoringView({ onEditRecord }: KpiMonitoringViewProps) {
                 return (
                   <tr key={rec.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="py-3.5 px-4 max-w-[280px]">
-                      <div className="font-medium text-zinc-100 truncate">{rec.kpiTitle}</div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-medium text-zinc-100 truncate">{rec.kpiTitle}</span>
+                        {rec.isEmployeeSpecific && rec.employeeName && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FACC15]/10 text-[#FACC15] font-semibold">
+                            {rec.employeeName}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-zinc-500 truncate mt-0.5">
                         {rec.categoryName} {rec.remarks ? `· ${rec.remarks}` : ''}
                       </div>
