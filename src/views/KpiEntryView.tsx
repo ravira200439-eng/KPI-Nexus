@@ -58,6 +58,13 @@ export function KpiEntryView({
     editingRecord?.reportingYear || settings.defaultReportingYear || new Date().getFullYear()
   );
 
+  // Scope filter: 'all' | 'general' | 'emp:<employeeName>'
+  const [selectedScope, setSelectedScope] = useState<string>(
+    editingRecord?.isEmployeeSpecific && editingRecord?.employeeName
+      ? `emp:${editingRecord.employeeName.trim()}`
+      : 'all'
+  );
+
   // Map of definitionId -> { pct: string, remarks: string }
   const [formDataMap, setFormDataMap] = useState<Record<string, { pct: string; remarks: string }>>({});
 
@@ -72,6 +79,11 @@ export function KpiEntryView({
       if (editingRecord.reportingMonth) setReportingMonth(editingRecord.reportingMonth);
       if (editingRecord.reportingQuarter) setReportingQuarter(editingRecord.reportingQuarter);
       setReportingYear(editingRecord.reportingYear);
+      if (editingRecord.isEmployeeSpecific && editingRecord.employeeName) {
+        setSelectedScope(`emp:${editingRecord.employeeName.trim()}`);
+      } else {
+        setSelectedScope('all');
+      }
     } else if (preselectedDepartmentId) {
       setDepartmentId(preselectedDepartmentId);
     }
@@ -87,6 +99,51 @@ export function KpiEntryView({
     () => definitions.filter((d) => d.departmentId === departmentId && d.isActive),
     [definitions, departmentId]
   );
+
+  const departmentEmployees = useMemo(() => {
+    const map = new Map<string, number>();
+    deptDefinitions.forEach((d) => {
+      if (d.isEmployeeSpecific && d.employeeName?.trim()) {
+        const name = d.employeeName.trim();
+        map.set(name, (map.get(name) || 0) + 1);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [deptDefinitions]);
+
+  const generalKpiCount = useMemo(
+    () => deptDefinitions.filter((d) => !d.isEmployeeSpecific || !d.employeeName?.trim()).length,
+    [deptDefinitions]
+  );
+
+  // Reset scope if department changes and previously selected employee doesn't exist in new department
+  useEffect(() => {
+    if (selectedScope.startsWith('emp:')) {
+      const empName = selectedScope.slice(4);
+      const exists = departmentEmployees.some((e) => e.name === empName);
+      if (!exists) {
+        setSelectedScope('all');
+      }
+    }
+  }, [departmentId, departmentEmployees, selectedScope]);
+
+  const visibleDefinitions = useMemo(() => {
+    if (selectedScope === 'all') return deptDefinitions;
+    if (selectedScope === 'general') {
+      return deptDefinitions.filter((d) => !d.isEmployeeSpecific || !d.employeeName?.trim());
+    }
+    if (selectedScope.startsWith('emp:')) {
+      const targetEmp = selectedScope.slice(4);
+      return deptDefinitions.filter(
+        (d) => d.isEmployeeSpecific && (d.employeeName || '').trim() === targetEmp
+      );
+    }
+    return deptDefinitions;
+  }, [deptDefinitions, selectedScope]);
+
+  const selectedEmployeeName = selectedScope.startsWith('emp:') ? selectedScope.slice(4) : null;
 
   const normalizedPeriodKeys = useMemo(() => {
     const monthInt = reportingPeriod === 'Monthly' ? Math.round(reportingMonth) : 0;
@@ -179,9 +236,11 @@ export function KpiEntryView({
       setErrorMsg('This reporting period has been locked by an Administrator.');
       return;
     }
-    if (deptDefinitions.length === 0) {
+    if (visibleDefinitions.length === 0) {
       setErrorMsg(
-        'No master KPIs have been configured for this department by Administration. Please configure them in Admin Portal -> KPI Configuration.'
+        deptDefinitions.length === 0
+          ? 'No master KPIs have been configured for this department by Administration. Please configure them in Admin Portal -> KPI Configuration.'
+          : 'No KPIs match the selected employee or scope filter.'
       );
       return;
     }
@@ -198,7 +257,7 @@ export function KpiEntryView({
       let createdCount = 0;
       let updatedCount = 0;
 
-      for (const def of deptDefinitions) {
+      for (const def of visibleDefinitions) {
         const entry = formDataMap[def.id];
         const pctNum = Number(entry?.pct ?? '100');
         if (Number.isNaN(pctNum) || pctNum < 0) {
@@ -249,8 +308,13 @@ export function KpiEntryView({
       const summaryParts: string[] = [];
       if (createdCount > 0) summaryParts.push(`${createdCount} created`);
       if (updatedCount > 0) summaryParts.push(`${updatedCount} updated`);
+      const scopeLabel = selectedEmployeeName
+        ? `for ${selectedEmployeeName}`
+        : selectedScope === 'general'
+          ? '(Department General KPIs)'
+          : 'department KPIs';
       setSuccessMsg(
-        `Successfully saved ${deptDefinitions.length} department KPI record(s) (${summaryParts.join(', ')}) for ${reportingPeriod} (${reportingYear}).`
+        `Successfully saved ${visibleDefinitions.length} KPI record(s) ${scopeLabel} (${summaryParts.join(', ')}) for ${reportingPeriod} (${reportingYear}).`
       );
       if (onFinished) {
         setTimeout(onFinished, 1200);
@@ -310,8 +374,8 @@ export function KpiEntryView({
       )}
 
       <form onSubmit={handleSubmitAll} className="space-y-6">
-        {/* Department & Period Selector Header */}
-        <div className="bg-[#0F1115] border border-white/8 rounded-xl p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Department, Scope/Employee & Period Selector Header */}
+        <div className="bg-[#0F1115] border border-white/8 rounded-xl p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-medium text-zinc-300 mb-1.5">Department *</label>
             <select
@@ -324,6 +388,31 @@ export function KpiEntryView({
                   {d.name} ({d.code})
                 </option>
               ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+              Employee / KPI Scope
+            </label>
+            <select
+              value={selectedScope}
+              onChange={(e) => setSelectedScope(e.target.value)}
+              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+            >
+              <option value="all">All Department KPIs ({deptDefinitions.length})</option>
+              {generalKpiCount > 0 && departmentEmployees.length > 0 && (
+                <option value="general">Department General KPIs ({generalKpiCount})</option>
+              )}
+              {departmentEmployees.length > 0 && (
+                <optgroup label="Employee-Specific KPIs">
+                  {departmentEmployees.map((emp) => (
+                    <option key={emp.name} value={`emp:${emp.name}`}>
+                      {emp.name} ({emp.count})
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
 
@@ -391,18 +480,27 @@ export function KpiEntryView({
 
         {/* Master KPIs List for Achievement Entry */}
         <div className="bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden shadow-xl">
-          <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="px-6 py-4 border-b border-white/8 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Target className="w-4 h-4 text-[#FACC15]" />
               <h2 className="text-base font-bold text-white font-display">
-                Master KPIs for Department ({deptDefinitions.length})
+                {selectedEmployeeName
+                  ? `KPIs for ${selectedEmployeeName}`
+                  : selectedScope === 'general'
+                    ? 'Department General KPIs'
+                    : 'Master KPIs for Department'}{' '}
+                ({visibleDefinitions.length})
               </h2>
             </div>
-            <span className="text-xs text-zinc-400">Enter percentage achieved for each KPI</span>
+            <span className="text-xs text-zinc-400">
+              {selectedEmployeeName
+                ? `Submitting only KPIs assigned to ${selectedEmployeeName}`
+                : 'Enter percentage achieved for each KPI'}
+            </span>
           </div>
 
           <div className="divide-y divide-white/8">
-            {deptDefinitions.map((def) => {
+            {visibleDefinitions.map((def) => {
               const currentPct = formDataMap[def.id]?.pct ?? '100';
               const numVal = Number(currentPct);
               const status = classifyKpiStatus(Number.isNaN(numVal) ? 0 : numVal, settings);
@@ -458,12 +556,14 @@ export function KpiEntryView({
               );
             })}
 
-            {deptDefinitions.length === 0 && (
+            {visibleDefinitions.length === 0 && (
               <div className="p-12 text-center space-y-3">
                 <p className="text-sm text-zinc-400">
-                  No master KPIs are configured for this department yet.
+                  {deptDefinitions.length === 0
+                    ? 'No master KPIs are configured for this department yet.'
+                    : 'No KPIs found for the selected employee or scope.'}
                 </p>
-                {isSuperAdmin && (
+                {isSuperAdmin && deptDefinitions.length === 0 && (
                   <p className="text-xs text-[#FACC15]">
                     As Administrator, you can add master KPIs for all departments in Admin Portal &rarr; KPI Configuration.
                   </p>
@@ -472,14 +572,20 @@ export function KpiEntryView({
             )}
           </div>
 
-          {deptDefinitions.length > 0 && (
+          {visibleDefinitions.length > 0 && (
             <div className="px-6 py-4 bg-[#0B0D11] border-t border-white/8 flex justify-end">
               <button
                 type="submit"
                 disabled={submitting || (isPeriodLocked && !isSuperAdmin)}
                 className="px-6 py-3 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black font-semibold text-sm transition-colors disabled:opacity-50 cursor-pointer shadow-lg shadow-[#FACC15]/10"
               >
-                {submitting ? 'Submitting KPI Records...' : 'Submit All KPI Percentages'}
+                {submitting
+                  ? 'Submitting KPI Records...'
+                  : selectedEmployeeName
+                    ? `Submit KPIs for ${selectedEmployeeName} (${visibleDefinitions.length})`
+                    : selectedScope === 'general'
+                      ? `Submit Department General KPIs (${visibleDefinitions.length})`
+                      : `Submit All KPI Percentages (${visibleDefinitions.length})`}
               </button>
             </div>
           )}

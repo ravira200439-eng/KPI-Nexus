@@ -70,6 +70,16 @@ export function KpiConfigurationView() {
     return definitions.filter((d) => d.departmentId === filterDeptId);
   }, [definitions, filterDeptId]);
 
+  const existingEmployeesInDept = useMemo(() => {
+    const set = new Set<string>();
+    definitions.forEach((d) => {
+      if (d.departmentId === defDeptId && d.isEmployeeSpecific && d.employeeName?.trim()) {
+        set.add(d.employeeName.trim());
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [definitions, defDeptId]);
+
   const handleAddDefinition = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -316,19 +326,43 @@ export function KpiConfigurationView() {
             </label>
 
             {isEmployeeSpecific && (
-              <div>
+              <div className="space-y-2">
                 <label className="block text-xs font-medium text-zinc-300 mb-1">
                   Employee Name / ID *
                 </label>
                 <input
                   type="text"
+                  list="existing-dept-employees"
                   required={isEmployeeSpecific}
                   maxLength={100}
                   value={defEmployeeName}
                   onChange={(e) => setDefEmployeeName(e.target.value)}
-                  placeholder="e.g., John Doe (Senior Exec)"
+                  placeholder="Select existing or type new employee name"
                   className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100"
                 />
+                <datalist id="existing-dept-employees">
+                  {existingEmployeesInDept.map((emp) => (
+                    <option key={emp} value={emp} />
+                  ))}
+                </datalist>
+                {existingEmployeesInDept.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {existingEmployeesInDept.map((emp) => (
+                      <button
+                        key={emp}
+                        type="button"
+                        onClick={() => setDefEmployeeName(emp)}
+                        className={`px-2 py-0.5 rounded text-[10px] border transition-colors cursor-pointer ${
+                          defEmployeeName.trim() === emp
+                            ? 'bg-[#FACC15] text-black border-[#FACC15] font-semibold'
+                            : 'bg-[#161920] text-zinc-300 border-white/10 hover:border-[#FACC15]/50'
+                        }`}
+                      >
+                        {emp}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
