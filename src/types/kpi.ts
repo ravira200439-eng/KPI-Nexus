@@ -1,4 +1,9 @@
-export type UserRole = 'super_admin' | 'dept_editor' | 'dept_viewer' | 'mgmt_viewer';
+export type UserRole =
+  | 'super_admin'
+  | 'dept_editor'
+  | 'dept_employee_editor'
+  | 'dept_viewer'
+  | 'mgmt_viewer';
 
 export type MeasurementType =
   | 'percentage'
@@ -62,6 +67,7 @@ export interface UserPermission {
   displayName: string;
   role: UserRole;
   departmentIds: string[];
+  editableEmployeeNames?: string[];
   isActive: boolean;
   notes: string;
   createdBy: string;

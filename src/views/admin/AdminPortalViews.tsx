@@ -63,7 +63,9 @@ export function AdminPortalView({ onNavigate }: { onNavigate: (s: NavSection) =>
     [activeDepartments, submittedDeptIds]
   );
 
-  const editorsCount = userPermissions.filter((u) => u.role === 'dept_editor' && u.isActive).length;
+  const editorsCount = userPermissions.filter(
+    (u) => (u.role === 'dept_editor' || u.role === 'dept_employee_editor') && u.isActive
+  ).length;
   const viewersCount = userPermissions.filter(
     (u) => (u.role === 'dept_viewer' || u.role === 'mgmt_viewer') && u.isActive
   ).length;
@@ -280,12 +282,14 @@ export function AdminPortalView({ onNavigate }: { onNavigate: (s: NavSection) =>
 // ============================================================================
 export function UserManagementView() {
   const { user } = useAuth();
-  const { departments, userPermissions } = useData();
+  const { departments, definitions, userPermissions } = useData();
 
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState<UserRole>('dept_editor');
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [customEmployeeInput, setCustomEmployeeInput] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState('');
   const [editingPerm, setEditingPerm] = useState<UserPermission | null>(null);
@@ -295,11 +299,27 @@ export function UserManagementView() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [permToRemove, setPermToRemove] = useState<UserPermission | null>(null);
 
+  const availableEmployees = useMemo(() => {
+    const names = new Set<string>(selectedEmployees);
+    definitions.forEach((def) => {
+      if (
+        def.isEmployeeSpecific &&
+        def.employeeName?.trim() &&
+        (selectedDepts.length === 0 || selectedDepts.includes(def.departmentId))
+      ) {
+        names.add(def.employeeName.trim());
+      }
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [definitions, selectedDepts, selectedEmployees]);
+
   const resetForm = () => {
     setEmail('');
     setDisplayName('');
     setRole('dept_editor');
     setSelectedDepts([]);
+    setSelectedEmployees([]);
+    setCustomEmployeeInput('');
     setIsActive(true);
     setNotes('');
     setEditingPerm(null);
@@ -311,6 +331,8 @@ export function UserManagementView() {
     setDisplayName(p.displayName);
     setRole(p.role);
     setSelectedDepts(p.departmentIds || []);
+    setSelectedEmployees(p.editableEmployeeNames || []);
+    setCustomEmployeeInput('');
     setIsActive(p.isActive);
     setNotes(p.notes || '');
     setErrorMsg(null);
@@ -323,6 +345,21 @@ export function UserManagementView() {
     );
   };
 
+  const toggleEmployee = (empName: string) => {
+    setSelectedEmployees((prev) =>
+      prev.includes(empName) ? prev.filter((item) => item !== empName) : [...prev, empName]
+    );
+  };
+
+  const handleAddCustomEmployee = () => {
+    const trimmed = customEmployeeInput.trim().slice(0, 100);
+    if (!trimmed) return;
+    if (!selectedEmployees.includes(trimmed)) {
+      setSelectedEmployees((prev) => [...prev, trimmed]);
+    }
+    setCustomEmployeeInput('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -333,8 +370,11 @@ export function UserManagementView() {
       setErrorMsg('Please enter a valid Gmail or corporate email address.');
       return;
     }
-    if ((role === 'dept_editor' || role === 'dept_viewer') && selectedDepts.length === 0) {
-      setErrorMsg('Please assign at least one department for a Department Editor or Viewer.');
+    if (
+      (role === 'dept_editor' || role === 'dept_employee_editor' || role === 'dept_viewer') &&
+      selectedDepts.length === 0
+    ) {
+      setErrorMsg('Please assign at least one department for this role.');
       return;
     }
 
@@ -351,6 +391,7 @@ export function UserManagementView() {
           displayName,
           role,
           departmentIds: selectedDepts,
+          editableEmployeeNames: role === 'dept_employee_editor' ? selectedEmployees : [],
           isActive,
           notes,
         },
@@ -396,6 +437,7 @@ export function UserManagementView() {
         displayName: p.displayName,
         role: p.role,
         departmentIds: p.departmentIds || [],
+        editableEmployeeNames: p.editableEmployeeNames || [],
         isActive: !p.isActive,
         notes: p.notes || '',
       },
@@ -488,15 +530,24 @@ export function UserManagementView() {
             >
               <option value="super_admin">Super Administrator</option>
               <option value="dept_editor">Department Editor</option>
+              <option value="dept_employee_editor">Dept / Employee Editor (View All)</option>
               <option value="dept_viewer">Department Viewer</option>
               <option value="mgmt_viewer">Management Viewer</option>
             </select>
           </div>
 
-          {(role === 'dept_editor' || role === 'dept_viewer') && (
+          {role === 'dept_employee_editor' && (
+            <div className="p-3 rounded-lg bg-[#FACC15]/10 border border-[#FACC15]/25 text-[11px] text-zinc-200 leading-relaxed">
+              <strong className="text-[#FACC15]">View All + Scoped Edit:</strong> User can view all departments across KPI Nexus, but can only enter/edit KPIs for the assigned department(s) and employee(s) below.
+            </div>
+          )}
+
+          {(role === 'dept_editor' || role === 'dept_employee_editor' || role === 'dept_viewer') && (
             <div className="space-y-2">
               <label className="block text-xs font-medium text-zinc-300">
-                Assign Departments (Multi-Select) *
+                {role === 'dept_employee_editor'
+                  ? 'Editable Department(s) (Multi-Select) *'
+                  : 'Assign Departments (Multi-Select) *'}
               </label>
               <div className="max-h-44 overflow-y-auto space-y-1.5 p-2.5 rounded-lg bg-[#161920] border border-white/10">
                 {departments.map((d) => (
@@ -515,6 +566,58 @@ export function UserManagementView() {
                 {departments.length === 0 && (
                   <div className="text-xs text-zinc-500">Create departments first.</div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {role === 'dept_employee_editor' && (
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-zinc-300">
+                Editable Employee KPIs (Optional Scope)
+              </label>
+              <p className="text-[11px] text-zinc-400">
+                Select specific employee(s) to restrict edits strictly to their KPIs, or leave unselected to allow editing all KPIs in the assigned department(s).
+              </p>
+              <div className="max-h-36 overflow-y-auto space-y-1.5 p-2.5 rounded-lg bg-[#161920] border border-white/10">
+                {availableEmployees.map((emp) => (
+                  <label key={emp} className="flex items-center gap-2.5 text-xs text-zinc-200 cursor-pointer py-0.5">
+                    <input
+                      type="checkbox"
+                      checked={selectedEmployees.includes(emp)}
+                      onChange={() => toggleEmployee(emp)}
+                      className="accent-[#FACC15]"
+                    />
+                    <span>{emp}</span>
+                  </label>
+                ))}
+                {availableEmployees.length === 0 && (
+                  <div className="text-[11px] text-zinc-500">
+                    No employee-specific KPIs configured in selected department(s) yet. Add an employee name below if needed.
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  maxLength={100}
+                  value={customEmployeeInput}
+                  onChange={(e) => setCustomEmployeeInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddCustomEmployee();
+                    }
+                  }}
+                  placeholder="Add employee name..."
+                  className="flex-1 bg-[#161920] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCustomEmployee}
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-xs text-white font-medium cursor-pointer"
+                >
+                  Add
+                </button>
               </div>
             </div>
           )}
@@ -579,12 +682,31 @@ export function UserManagementView() {
                     <td className="py-3.5 px-4 font-medium text-[#FACC15]">
                       {ROLE_LABELS[p.role]}
                     </td>
-                    <td className="py-3.5 px-4 text-zinc-300 max-w-[240px]">
-                      {p.role === 'super_admin' || p.role === 'mgmt_viewer'
-                        ? 'All Company Departments'
-                        : p.departmentIds.length > 0
-                          ? p.departmentIds.map((id) => deptMap.get(id) || id).join(', ')
-                          : 'None'}
+                    <td className="py-3.5 px-4 text-zinc-300 max-w-[260px]">
+                      {p.role === 'super_admin' || p.role === 'mgmt_viewer' ? (
+                        'All Company Departments'
+                      ) : p.role === 'dept_employee_editor' ? (
+                        <div className="space-y-1">
+                          <div className="text-[11px] text-emerald-400 font-medium">
+                            View: All Departments
+                          </div>
+                          <div>
+                            <span className="text-zinc-400">Edit Dept: </span>
+                            {p.departmentIds.length > 0
+                              ? p.departmentIds.map((id) => deptMap.get(id) || id).join(', ')
+                              : 'None'}
+                          </div>
+                          {p.editableEmployeeNames && p.editableEmployeeNames.length > 0 && (
+                            <div className="text-[11px] text-[#FACC15]">
+                              Employees: {p.editableEmployeeNames.join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      ) : p.departmentIds.length > 0 ? (
+                        p.departmentIds.map((id) => deptMap.get(id) || id).join(', ')
+                      ) : (
+                        'None'
+                      )}
                     </td>
                     <td className="py-3.5 px-4">
                       <button
@@ -946,13 +1068,13 @@ export function AccessPermissionsView({ onNavigate }: { onNavigate: (s: NavSecti
   const { userPermissions } = useData();
 
   const matrix = [
-    { capability: 'View All Departments & Consolidated Reports', sa: true, de: false, dv: false, mv: true },
-    { capability: 'View Assigned Departments & Dashboards', sa: true, de: true, dv: true, mv: true },
-    { capability: 'Enter, Edit & Delete Assigned Dept KPIs', sa: true, de: true, dv: false, mv: false },
-    { capability: 'Modify Other Departments’ KPI Records', sa: true, de: false, dv: false, mv: false },
-    { capability: 'Generate & Export PDF / Excel Reports', sa: true, de: true, dv: true, mv: true },
-    { capability: 'Launch Meeting Presentation Mode', sa: true, de: true, dv: true, mv: true },
-    { capability: 'Manage Users, Departments, Targets & Settings', sa: true, de: false, dv: false, mv: false },
+    { capability: 'View All Departments & Consolidated Reports', sa: true, de: false, ee: true, dv: false, mv: true },
+    { capability: 'View Assigned Departments & Dashboards', sa: true, de: true, ee: true, dv: true, mv: true },
+    { capability: 'Enter, Edit & Delete Assigned Dept / Employee KPIs', sa: true, de: true, ee: true, dv: false, mv: false },
+    { capability: 'Modify Other Departments’ / Unassigned Employees’ KPIs', sa: true, de: false, ee: false, dv: false, mv: false },
+    { capability: 'Generate & Export PDF / Excel Reports', sa: true, de: true, ee: true, dv: true, mv: true },
+    { capability: 'Launch Meeting Presentation Mode', sa: true, de: true, ee: true, dv: true, mv: true },
+    { capability: 'Manage Users, Departments, Targets & Settings', sa: true, de: false, ee: false, dv: false, mv: false },
   ];
 
   return (
@@ -990,6 +1112,7 @@ export function AccessPermissionsView({ onNavigate }: { onNavigate: (s: NavSecti
                 <th className="py-3 px-4">Permission Capability</th>
                 <th className="py-3 px-4 text-center text-[#FACC15]">Super Admin</th>
                 <th className="py-3 px-4 text-center">Dept Editor</th>
+                <th className="py-3 px-4 text-center text-[#FACC15]">Emp Dept Editor</th>
                 <th className="py-3 px-4 text-center">Dept Viewer</th>
                 <th className="py-3 px-4 text-center">Mgmt Viewer</th>
               </tr>
@@ -998,7 +1121,7 @@ export function AccessPermissionsView({ onNavigate }: { onNavigate: (s: NavSecti
               {matrix.map((row) => (
                 <tr key={row.capability}>
                   <td className="py-3.5 px-4 font-medium text-zinc-200">{row.capability}</td>
-                  {[row.sa, row.de, row.dv, row.mv].map((allowed, i) => (
+                  {[row.sa, row.de, row.ee, row.dv, row.mv].map((allowed, i) => (
                     <td
                       key={i}
                       className={`py-3.5 px-4 text-center font-semibold ${
@@ -1019,8 +1142,8 @@ export function AccessPermissionsView({ onNavigate }: { onNavigate: (s: NavSecti
         <h3 className="text-sm font-bold text-white font-display mb-3">
           Role Distribution Summary
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {(['super_admin', 'dept_editor', 'dept_viewer', 'mgmt_viewer'] as UserRole[]).map((r) => {
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          {(['super_admin', 'dept_editor', 'dept_employee_editor', 'dept_viewer', 'mgmt_viewer'] as UserRole[]).map((r) => {
             const count = userPermissions.filter((u) => u.role === r && u.isActive).length;
             return (
               <div key={r} className="p-4 rounded-lg bg-[#161920] border border-white/8">

@@ -18,6 +18,8 @@ interface AuthContextValue {
   isAuthorized: boolean;
   isSuperAdmin: boolean;
   isMgmtViewer: boolean;
+  isDeptEmployeeEditor: boolean;
+  canViewAll: boolean;
   isEditor: boolean;
   isViewerOnly: boolean;
   authLoading: boolean;
@@ -162,7 +164,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const role = permission?.role ?? null;
   const isSuperAdmin = isAuthorized && role === 'super_admin';
   const isMgmtViewer = isAuthorized && role === 'mgmt_viewer';
-  const isEditor = isAuthorized && (role === 'super_admin' || role === 'dept_editor');
+  const isDeptEmployeeEditor = isAuthorized && role === 'dept_employee_editor';
+  const canViewAll = isSuperAdmin || isMgmtViewer || isDeptEmployeeEditor;
+  const isEditor =
+    isAuthorized &&
+    (role === 'super_admin' || role === 'dept_editor' || role === 'dept_employee_editor');
   const isViewerOnly = isAuthorized && (role === 'dept_viewer' || role === 'mgmt_viewer');
 
   return (
@@ -174,6 +180,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthorized,
         isSuperAdmin,
         isMgmtViewer,
+        isDeptEmployeeEditor,
+        canViewAll,
         isEditor,
         isViewerOnly,
         authLoading,

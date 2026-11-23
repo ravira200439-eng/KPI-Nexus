@@ -137,6 +137,7 @@ export async function upsertUserPermission(
     displayName: string;
     role: UserRole;
     departmentIds: string[];
+    editableEmployeeNames?: string[];
     isActive: boolean;
     notes: string;
   },
@@ -155,6 +156,17 @@ export async function upsertUserPermission(
       ? []
       : input.departmentIds.slice(0, 50);
 
+  const cleanEmployees =
+    input.role === 'dept_employee_editor'
+      ? Array.from(
+          new Set(
+            (input.editableEmployeeNames || [])
+              .map((n) => clampStr(n, 100))
+              .filter(Boolean)
+          )
+        ).slice(0, 50)
+      : [];
+
   try {
     const existingSnap = await getDoc(docRef);
     if (!existingSnap.exists() && !isEdit) {
@@ -163,6 +175,7 @@ export async function upsertUserPermission(
         displayName: clampStr(input.displayName || cleanEmail.split('@')[0], 120),
         role: input.role,
         departmentIds: cleanDepts,
+        editableEmployeeNames: cleanEmployees,
         isActive: input.isActive,
         notes: clampStr(input.notes, 300),
         createdBy: clampStr(actor.uid, 128),
@@ -174,6 +187,7 @@ export async function upsertUserPermission(
         displayName: clampStr(input.displayName || cleanEmail.split('@')[0], 120),
         role: input.role,
         departmentIds: cleanDepts,
+        editableEmployeeNames: cleanEmployees,
         isActive: input.isActive,
         notes: clampStr(input.notes, 300),
         updatedAt: serverTimestamp(),
@@ -186,7 +200,9 @@ export async function upsertUserPermission(
       action: existingSnap.exists() ? 'Updated User Permission' : 'Added Authorized User',
       targetCollection: 'user_permissions',
       targetId: emailKey.slice(0, 64),
-      details: `${cleanEmail} assigned role ${input.role} (${input.isActive ? 'Active' : 'Inactive'})`,
+      details: `${cleanEmail} assigned role ${input.role}${
+        cleanEmployees.length > 0 ? ` (Employees: ${cleanEmployees.join(', ')})` : ''
+      } (${input.isActive ? 'Active' : 'Inactive'})`,
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);

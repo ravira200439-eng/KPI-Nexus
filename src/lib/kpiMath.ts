@@ -55,6 +55,7 @@ export const QUARTER_NAMES = ['Q1 (Jan–Mar)', 'Q2 (Apr–Jun)', 'Q3 (Jul–Sep
 export const ROLE_LABELS: Record<UserRole, string> = {
   super_admin: 'Super Administrator',
   dept_editor: 'Department Editor',
+  dept_employee_editor: 'Dept / Employee Editor (View All)',
   dept_viewer: 'Department Viewer',
   mgmt_viewer: 'Management Viewer',
 };

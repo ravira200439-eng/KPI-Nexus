@@ -25,8 +25,9 @@
       "properties": {
         "email": { "type": "string", "minLength": 5, "maxLength": 120 },
         "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
-        "role": { "type": "string", "enum": ["super_admin", "dept_editor", "dept_viewer", "mgmt_viewer"] },
+        "role": { "type": "string", "enum": ["super_admin", "dept_editor", "dept_employee_editor", "dept_viewer", "mgmt_viewer"] },
         "departmentIds": { "type": "array" },
+        "editableEmployeeNames": { "type": "array" },
         "isActive": { "type": "boolean" },
         "notes": { "type": "string", "maxLength": 300 },
         "createdBy": { "type": "string", "maxLength": 128 },

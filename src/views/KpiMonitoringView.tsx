@@ -24,10 +24,21 @@ export function KpiMonitoringView({ onEditRecord }: KpiMonitoringViewProps) {
 
   const canModifyRecord = (rec: KpiRecord): boolean => {
     if (isSuperAdmin) return true;
-    return (
-      permission?.role === 'dept_editor' &&
-      (permission.departmentIds || []).includes(rec.departmentId)
-    );
+    const inAssignedDept = (permission?.departmentIds || []).includes(rec.departmentId);
+    if (!inAssignedDept) return false;
+    if (permission?.role === 'dept_editor') return true;
+    if (permission?.role === 'dept_employee_editor') {
+      const allowedEmployees = (permission.editableEmployeeNames || [])
+        .map((n) => n.trim())
+        .filter(Boolean);
+      if (allowedEmployees.length === 0) return true;
+      return Boolean(
+        rec.isEmployeeSpecific &&
+          rec.employeeName &&
+          allowedEmployees.includes(rec.employeeName.trim())
+      );
+    }
+    return false;
   };
 
   const filtered = useMemo(() => {

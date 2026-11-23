@@ -29,7 +29,7 @@ interface DepartmentsViewProps {
 }
 
 export function DepartmentsView({ onNavigate, onQuickCreateForDept }: DepartmentsViewProps) {
-  const { isEditor, isSuperAdmin } = useAuth();
+  const { isEditor, isSuperAdmin, permission } = useAuth();
   const { departments, definitions, records } = useData();
 
   const [selectedDeptId, setSelectedDeptId] = useState<string>('');
@@ -111,7 +111,9 @@ export function DepartmentsView({ onNavigate, onQuickCreateForDept }: Department
           </p>
         </div>
 
-        {isEditor && activeDept && (
+        {isEditor &&
+          activeDept &&
+          (isSuperAdmin || (permission?.departmentIds || []).includes(activeDept.id)) && (
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}

@@ -33,8 +33,15 @@ export function KpiEntryView({
   editingRecord,
   onFinished,
 }: KpiEntryViewProps) {
-  const { user, permission, isSuperAdmin } = useAuth();
+  const { user, permission, isSuperAdmin, isDeptEmployeeEditor } = useAuth();
   const { activeDepartments, definitions, records, reportingPeriods, settings } = useData();
+
+  const editableEmployees = useMemo(() => {
+    if (!isDeptEmployeeEditor) return [];
+    return (permission?.editableEmployeeNames || [])
+      .map((n) => n.trim())
+      .filter(Boolean);
+  }, [isDeptEmployeeEditor, permission]);
 
   const editableDepartments = useMemo(() => {
     if (isSuperAdmin) return activeDepartments;
@@ -95,10 +102,15 @@ export function KpiEntryView({
     }
   }, [departmentId, editableDepartments]);
 
-  const deptDefinitions = useMemo(
-    () => definitions.filter((d) => d.departmentId === departmentId && d.isActive),
-    [definitions, departmentId]
-  );
+  const deptDefinitions = useMemo(() => {
+    const base = definitions.filter((d) => d.departmentId === departmentId && d.isActive);
+    if (isDeptEmployeeEditor && editableEmployees.length > 0) {
+      return base.filter(
+        (d) => d.isEmployeeSpecific && d.employeeName && editableEmployees.includes(d.employeeName.trim())
+      );
+    }
+    return base;
+  }, [definitions, departmentId, isDeptEmployeeEditor, editableEmployees]);
 
   const departmentEmployees = useMemo(() => {
     const map = new Map<string, number>();
@@ -124,10 +136,16 @@ export function KpiEntryView({
       const empName = selectedScope.slice(4);
       const exists = departmentEmployees.some((e) => e.name === empName);
       if (!exists) {
-        setSelectedScope('all');
+        setSelectedScope(
+          editableEmployees.length === 1 && departmentEmployees.length === 1
+            ? `emp:${departmentEmployees[0].name}`
+            : 'all'
+        );
       }
+    } else if (editableEmployees.length === 1 && departmentEmployees.length === 1) {
+      setSelectedScope(`emp:${departmentEmployees[0].name}`);
     }
-  }, [departmentId, departmentEmployees, selectedScope]);
+  }, [departmentId, departmentEmployees, selectedScope, editableEmployees]);
 
   const visibleDefinitions = useMemo(() => {
     if (selectedScope === 'all') return deptDefinitions;
@@ -400,18 +418,36 @@ export function KpiEntryView({
               onChange={(e) => setSelectedScope(e.target.value)}
               className="w-full bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-[#FACC15]"
             >
-              <option value="all">All Department KPIs ({deptDefinitions.length})</option>
-              {generalKpiCount > 0 && departmentEmployees.length > 0 && (
-                <option value="general">Department General KPIs ({generalKpiCount})</option>
-              )}
-              {departmentEmployees.length > 0 && (
-                <optgroup label="Employee-Specific KPIs">
+              {editableEmployees.length > 0 ? (
+                <>
+                  {departmentEmployees.length > 1 && (
+                    <option value="all">All Assigned Employee KPIs ({deptDefinitions.length})</option>
+                  )}
                   {departmentEmployees.map((emp) => (
                     <option key={emp.name} value={`emp:${emp.name}`}>
                       {emp.name} ({emp.count})
                     </option>
                   ))}
-                </optgroup>
+                  {departmentEmployees.length === 0 && (
+                    <option value="all">No Assigned Employee KPIs</option>
+                  )}
+                </>
+              ) : (
+                <>
+                  <option value="all">All Department KPIs ({deptDefinitions.length})</option>
+                  {generalKpiCount > 0 && departmentEmployees.length > 0 && (
+                    <option value="general">Department General KPIs ({generalKpiCount})</option>
+                  )}
+                  {departmentEmployees.length > 0 && (
+                    <optgroup label="Employee-Specific KPIs">
+                      {departmentEmployees.map((emp) => (
+                        <option key={emp.name} value={`emp:${emp.name}`}>
+                          {emp.name} ({emp.count})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </>
               )}
             </select>
           </div>

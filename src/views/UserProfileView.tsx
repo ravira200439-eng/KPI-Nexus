@@ -5,13 +5,15 @@ import { useData } from '../context/DataContext';
 import { ROLE_LABELS } from '../lib/kpiMath';
 
 export function UserProfileView() {
-  const { user, permission, role, isSuperAdmin, isMgmtViewer, logout } = useAuth();
+  const { user, permission, role, canViewAll, isSuperAdmin, isDeptEmployeeEditor, logout } = useAuth();
   const { departments } = useData();
 
-  const assignedDepts =
-    isSuperAdmin || isMgmtViewer
-      ? departments
-      : departments.filter((d) => (permission?.departmentIds || []).includes(d.id));
+  const editableDeptIds = permission?.departmentIds || [];
+  const editableEmployees = permission?.editableEmployeeNames || [];
+
+  const assignedDepts = canViewAll
+    ? departments
+    : departments.filter((d) => editableDeptIds.includes(d.id));
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -66,11 +68,18 @@ export function UserProfileView() {
           <div className="flex items-center gap-2 text-sm font-bold text-white font-display">
             <Building2 className="w-4 h-4 text-[#FACC15]" />
             <span>
-              {isSuperAdmin || isMgmtViewer
-                ? 'Authorized Scope: All Company Departments'
+              {canViewAll
+                ? 'Authorized View Scope: All Company Departments'
                 : `Assigned Departments (${assignedDepts.length})`}
             </span>
           </div>
+
+          {isDeptEmployeeEditor && editableEmployees.length > 0 && (
+            <div className="p-3 rounded-lg bg-[#FACC15]/10 border border-[#FACC15]/25 text-xs text-zinc-200">
+              <span className="font-semibold text-[#FACC15]">Assigned Editable Employees: </span>
+              <span>{editableEmployees.join(', ')}</span>
+            </div>
+          )}
 
           {assignedDepts.length === 0 ? (
             <p className="text-xs text-zinc-500">
@@ -78,20 +87,30 @@ export function UserProfileView() {
             </p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {assignedDepts.map((d) => (
-                <div
-                  key={d.id}
-                  className="p-3.5 rounded-lg bg-[#161920] border border-white/8 flex items-center justify-between"
-                >
-                  <div>
-                    <div className="text-xs font-semibold text-white">{d.name}</div>
-                    <div className="text-[11px] text-zinc-400">{d.code}</div>
+              {assignedDepts.map((d) => {
+                const canEditThis =
+                  isSuperAdmin ||
+                  role === 'dept_editor' ||
+                  (role === 'dept_employee_editor' && editableDeptIds.includes(d.id));
+                return (
+                  <div
+                    key={d.id}
+                    className="p-3.5 rounded-lg bg-[#161920] border border-white/8 flex items-center justify-between"
+                  >
+                    <div>
+                      <div className="text-xs font-semibold text-white">{d.name}</div>
+                      <div className="text-[11px] text-zinc-400">{d.code}</div>
+                    </div>
+                    <span className={`text-[11px] ${canEditThis ? 'text-[#FACC15] font-medium' : 'text-[#D4AF37]'}`}>
+                      {canEditThis
+                        ? role === 'dept_employee_editor' && editableEmployees.length > 0
+                          ? 'Employee Editor'
+                          : 'Editor'
+                        : 'View Only'}
+                    </span>
                   </div>
-                  <span className="text-[11px] text-[#D4AF37]">
-                    {role === 'dept_viewer' || role === 'mgmt_viewer' ? 'View Only' : 'Editor'}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

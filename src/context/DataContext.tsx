@@ -43,7 +43,7 @@ interface DataContextValue {
 const DataContext = createContext<DataContextValue | undefined>(undefined);
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const { user, permission, isAuthorized, isSuperAdmin, isMgmtViewer } = useAuth();
+  const { user, permission, isAuthorized, isSuperAdmin, canViewAll } = useAuth();
 
   const [departments, setDepartments] = useState<Department[]>([]);
   const [categories, setCategories] = useState<KpiCategory[]>([]);
@@ -78,7 +78,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     setDataLoading(true);
     const unsubs: Unsubscribe[] = [];
-    const hasGlobalRead = isSuperAdmin || isMgmtViewer;
+    const hasGlobalRead = canViewAll;
     const assignedDeptIds = permission.departmentIds || [];
     const chunkedDeptIds = assignedDeptIds.slice(0, 30);
 
@@ -344,7 +344,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return () => {
       unsubs.forEach((u) => u());
     };
-  }, [isAuthorized, permission, user, isSuperAdmin, isMgmtViewer]);
+  }, [isAuthorized, permission, user, isSuperAdmin, canViewAll]);
 
   const activeDepartments = useMemo(
     () => departments.filter((d) => d.isActive),
