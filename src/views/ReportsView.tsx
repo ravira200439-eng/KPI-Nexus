@@ -21,6 +21,7 @@ import {
   computeMonthlyDetailedRows,
   computeOverviewMetrics,
   computeYearlyDetailedRows,
+  getRecordEffectiveMonth,
 } from '../lib/analytics';
 import {
   formatPeriodLabel,
@@ -31,25 +32,26 @@ import {
 } from '../lib/kpiMath';
 
 type ReportType =
-  | 'individual_kpi'
-  | 'department_wise'
-  | 'monthly'
-  | 'quarterly'
-  | 'annual'
   | 'company_consolidated'
+  | 'monthly'
+  | 'department_wise'
+  | 'annual'
+  | 'quarterly'
+  | 'individual_kpi'
   | 'target_vs_actual'
   | 'underperforming'
   | 'department_comparison';
 
-type SummaryTab = 'all' | 'department' | 'monthly' | 'yearly';
+type SummaryTab = 'all' | 'monthly' | 'yearly' | 'department';
+type DetailGroupMode = 'monthly' | 'yearly' | 'department' | 'flat';
 
 const REPORT_TYPES: { id: ReportType; label: string; desc: string }[] = [
   { id: 'company_consolidated', label: 'Company-Wide Consolidated KPI Report', desc: 'All active departments and submitted KPIs across X Guard with monthly, yearly & departmental breakdowns' },
+  { id: 'monthly', label: 'Monthly-Wise KPI Performance Report', desc: 'Month-by-month (Jan–Dec) KPI breakdown and details across departments, or filter to a specific month' },
   { id: 'department_wise', label: 'Department-Wise KPI Report', desc: 'Detailed KPI metrics, monthly progression & yearly history for a selected department' },
-  { id: 'individual_kpi', label: 'Individual KPI Report', desc: 'Focused dossier on a single selected KPI record and all contextual metadata' },
-  { id: 'monthly', label: 'Monthly Performance Report', desc: 'KPI outcomes for a chosen reporting month and year across departments' },
+  { id: 'annual', label: 'Yearly-Wise / Annual Performance Report', desc: 'Year-over-year and full-year corporate performance summary with monthly & department breakdowns' },
   { id: 'quarterly', label: 'Quarterly Performance Report', desc: 'Quarterly review summary (Q1–Q4)' },
-  { id: 'annual', label: 'Annual Performance Report', desc: 'Full-year corporate performance summary with month-by-month & department-wise breakdown' },
+  { id: 'individual_kpi', label: 'Individual KPI Report', desc: 'Focused dossier on a single selected KPI record and all contextual metadata' },
   { id: 'target_vs_actual', label: 'Target vs Actual Report', desc: 'Variance analysis comparing targets against realized achievements' },
   { id: 'underperforming', label: 'Underperforming KPI Report', desc: 'Focus report highlighting Needs Improvement & Critical KPIs' },
   { id: 'department_comparison', label: 'Department Comparison Report', desc: 'Cross-departmental ranking and benchmark averages' },
@@ -64,10 +66,9 @@ export function ReportsView() {
   const [selectedRecordId, setSelectedRecordId] = useState<string>(records[0]?.id || '');
   const [selectedYear, setSelectedYear] = useState<number>(0);
   const [selectedMonth, setSelectedMonth] = useState<number>(0);
-  const [selectedQuarter, setSelectedQuarter] = useState<number>(
-    Math.ceil((new Date().getMonth() + 1) / 3)
-  );
+  const [selectedQuarter, setSelectedQuarter] = useState<number>(0);
   const [summaryTab, setSummaryTab] = useState<SummaryTab>('all');
+  const [detailGroupMode, setDetailGroupMode] = useState<DetailGroupMode>('monthly');
   const [showPreview, setShowPreview] = useState(true);
   const [exportingPdf, setExportingPdf] = useState(false);
 
@@ -77,45 +78,36 @@ export function ReportsView() {
     return Array.from(s).sort((a, b) => b - a);
   }, [records, settings.defaultReportingYear]);
 
-  const effectiveYear = useMemo(() => {
-    if (reportType === 'monthly' || reportType === 'quarterly' || reportType === 'annual') {
-      return selectedYear === 0
-        ? settings.defaultReportingYear || new Date().getFullYear()
-        : selectedYear;
-    }
-    return selectedYear;
-  }, [reportType, selectedYear, settings.defaultReportingYear]);
-
-  const effectiveMonth = useMemo(() => {
-    if (reportType === 'monthly') {
-      return selectedMonth === 0 ? new Date().getMonth() + 1 : selectedMonth;
-    }
-    return selectedMonth;
-  }, [reportType, selectedMonth]);
+  const effectiveYear = selectedYear;
+  const effectiveMonth = selectedMonth;
 
   const reportRecords = useMemo(() => {
-    return records.filter((r) => {
-      if (reportType === 'individual_kpi') {
-        return selectedRecordId ? r.id === selectedRecordId : true;
-      }
-      if (selectedDeptId !== 'all' && r.departmentId !== selectedDeptId) {
-        return false;
-      }
-      if (effectiveYear !== 0 && r.reportingYear !== effectiveYear) {
-        return false;
-      }
-      if (reportType === 'monthly') {
-        if (r.reportingMonth !== effectiveMonth) return false;
-      } else if (reportType === 'quarterly') {
-        if (r.reportingQuarter !== selectedQuarter) return false;
-      } else if (effectiveMonth !== 0 && r.reportingMonth !== effectiveMonth) {
-        return false;
-      }
-      if (reportType === 'underperforming') {
-        if (r.status !== 'Critical' && r.status !== 'Needs Improvement') return false;
-      }
-      return true;
-    });
+    return records
+      .filter((r) => {
+        if (reportType === 'individual_kpi') {
+          return selectedRecordId ? r.id === selectedRecordId : true;
+        }
+        if (selectedDeptId !== 'all' && r.departmentId !== selectedDeptId) {
+          return false;
+        }
+        if (effectiveYear !== 0 && r.reportingYear !== effectiveYear) {
+          return false;
+        }
+        if (reportType === 'quarterly' && selectedQuarter !== 0) {
+          if (r.reportingQuarter !== selectedQuarter) return false;
+        } else if (effectiveMonth !== 0 && getRecordEffectiveMonth(r) !== effectiveMonth) {
+          return false;
+        }
+        if (reportType === 'underperforming') {
+          if (r.status !== 'Critical' && r.status !== 'Needs Improvement') return false;
+        }
+        return true;
+      })
+      .sort(
+        (a, b) =>
+          b.reportingYear - a.reportingYear ||
+          getRecordEffectiveMonth(b) - getRecordEffectiveMonth(a)
+      );
   }, [
     records,
     reportType,
@@ -144,23 +136,82 @@ export function ReportsView() {
   );
   const yearlyDetailed = useMemo(() => computeYearlyDetailedRows(reportRecords), [reportRecords]);
 
+  const groupedDetailSections = useMemo(() => {
+    if (detailGroupMode === 'flat') {
+      return [{ key: 'all', title: `All KPI Records (${reportRecords.length})`, avg: metrics.avgAchievement, records: reportRecords }];
+    }
+    if (detailGroupMode === 'monthly') {
+      const monthMap = new Map<number, typeof reportRecords>();
+      const noMonth: typeof reportRecords = [];
+      reportRecords.forEach((r) => {
+        const m = getRecordEffectiveMonth(r);
+        if (m >= 1 && m <= 12) {
+          const arr = monthMap.get(m) || [];
+          arr.push(r);
+          monthMap.set(m, arr);
+        } else {
+          noMonth.push(r);
+        }
+      });
+      const sections = Array.from(monthMap.entries())
+        .sort((a, b) => b[0] - a[0])
+        .map(([m, list]) => ({
+          key: `m-${m}`,
+          title: `${MONTH_NAMES[m - 1]} (${list.length} KPIs)`,
+          avg: computeOverviewMetrics(list).avgAchievement,
+          records: list,
+        }));
+      if (noMonth.length > 0) {
+        sections.push({
+          key: 'm-0',
+          title: `Quarterly / Annual KPIs (${noMonth.length} KPIs)`,
+          avg: computeOverviewMetrics(noMonth).avgAchievement,
+          records: noMonth,
+        });
+      }
+      return sections;
+    }
+    if (detailGroupMode === 'yearly') {
+      const yMap = new Map<number, typeof reportRecords>();
+      reportRecords.forEach((r) => {
+        const arr = yMap.get(r.reportingYear) || [];
+        arr.push(r);
+        yMap.set(r.reportingYear, arr);
+      });
+      return Array.from(yMap.entries())
+        .sort((a, b) => b[0] - a[0])
+        .map(([y, list]) => ({
+          key: `y-${y}`,
+          title: `FY ${y} (${list.length} KPIs)`,
+          avg: computeOverviewMetrics(list).avgAchievement,
+          records: list,
+        }));
+    }
+    const dMap = new Map<string, { name: string; list: typeof reportRecords }>();
+    reportRecords.forEach((r) => {
+      const cur = dMap.get(r.departmentId) || { name: r.departmentName, list: [] };
+      cur.list.push(r);
+      dMap.set(r.departmentId, cur);
+    });
+    return Array.from(dMap.entries()).map(([id, v]) => ({
+      key: `d-${id}`,
+      title: `${v.name} (${v.list.length} KPIs)`,
+      avg: computeOverviewMetrics(v.list).avgAchievement,
+      records: v.list,
+    }));
+  }, [detailGroupMode, reportRecords, metrics.avgAchievement]);
+
   const activeReportMeta = REPORT_TYPES.find((r) => r.id === reportType)!;
   const reportingPeriodHeading = useMemo(() => {
     const deptName =
       selectedDeptId === 'all'
         ? 'All Departments'
         : departments.find((d) => d.id === selectedDeptId)?.name || 'Department';
-    if (reportType === 'monthly') {
-      return `${MONTH_NAMES[effectiveMonth - 1]} ${effectiveYear} · ${deptName}`;
-    }
-    if (reportType === 'quarterly') {
-      return `${QUARTER_NAMES[selectedQuarter - 1]} ${effectiveYear} · ${deptName}`;
-    }
-    if (reportType === 'annual') {
-      return `FY ${effectiveYear} · ${deptName}`;
-    }
     const yrLabel = effectiveYear === 0 ? 'All Years' : `FY ${effectiveYear}`;
-    const moLabel = effectiveMonth === 0 ? 'All Months' : MONTH_NAMES[effectiveMonth - 1];
+    if (reportType === 'quarterly' && selectedQuarter > 0) {
+      return `${QUARTER_NAMES[selectedQuarter - 1]} · ${yrLabel} · ${deptName}`;
+    }
+    const moLabel = effectiveMonth === 0 ? 'All Months (Jan–Dec)' : MONTH_NAMES[effectiveMonth - 1];
     return `${yrLabel} · ${moLabel} · ${deptName}`;
   }, [reportType, effectiveMonth, effectiveYear, selectedQuarter, selectedDeptId, departments]);
 
@@ -387,7 +438,7 @@ export function ReportsView() {
       Department: r.departmentName,
       Category: r.categoryName,
       'Reporting Cadence': r.reportingPeriod,
-      Month: r.reportingMonth >= 1 ? MONTH_NAMES[r.reportingMonth - 1] : '',
+      Month: getRecordEffectiveMonth(r) >= 1 ? MONTH_NAMES[getRecordEffectiveMonth(r) - 1] : '',
       Quarter: r.reportingQuarter >= 1 ? `Q${r.reportingQuarter}` : '',
       Year: r.reportingYear,
       Period: formatPeriodLabel(r),
@@ -560,9 +611,7 @@ export function ReportsView() {
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
                 className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2.5 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
               >
-                {reportType !== 'monthly' && reportType !== 'quarterly' && reportType !== 'annual' && (
-                  <option value={0}>All Reporting Years</option>
-                )}
+                <option value={0}>All Reporting Years</option>
                 {availableYears.map((y) => (
                   <option key={y} value={y}>
                     FY {y}
@@ -579,6 +628,7 @@ export function ReportsView() {
                   onChange={(e) => setSelectedQuarter(Number(e.target.value))}
                   className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2.5 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
                 >
+                  <option value={0}>All Quarters (Q1–Q4)</option>
                   {QUARTER_NAMES.map((q, idx) => (
                     <option key={q} value={idx + 1}>
                       {q}
@@ -594,7 +644,7 @@ export function ReportsView() {
                   onChange={(e) => setSelectedMonth(Number(e.target.value))}
                   className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2.5 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
                 >
-                  {reportType !== 'monthly' && <option value={0}>All Months</option>}
+                  <option value={0}>All Months (Jan–Dec)</option>
                   {MONTH_NAMES.map((m, idx) => (
                     <option key={m} value={idx + 1}>
                       {m}
@@ -650,19 +700,74 @@ export function ReportsView() {
             </div>
           </div>
 
-          {/* Graphical Snapshot inside Report */}
+          {/* Graphical Snapshot inside Report (Monthly-Wise, Yearly-Wise & Department-Wise) */}
           {reportRecords.length > 0 && (
-            <div ref={chartPreviewRef} className="p-6 border-b border-white/8 bg-[#0F1115] grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div ref={chartPreviewRef} className="p-6 border-b border-white/8 bg-[#0F1115] grid grid-cols-1 lg:grid-cols-3 gap-5">
+              <div>
+                <div className="text-xs font-medium text-[#D4AF37] mb-3">
+                  Monthly-Wise Achievement (Jan–Dec)
+                </div>
+                <div className="h-[180px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={monthlyDetailed}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fill: '#A1A1AA', fontSize: 10 }} />
+                      <YAxis tick={{ fill: '#A1A1AA', fontSize: 10 }} unit="%" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#161920',
+                          borderColor: 'rgba(250,204,21,0.3)',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgAchievement"
+                        name="Monthly Avg %"
+                        stroke="#FACC15"
+                        strokeWidth={2.5}
+                        dot={{ r: 3, fill: '#FACC15' }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs font-medium text-[#D4AF37] mb-3">
+                  Yearly-Wise Achievement Trajectory
+                </div>
+                <div className="h-[180px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={yearlyDetailed}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fill: '#A1A1AA', fontSize: 10 }} />
+                      <YAxis tick={{ fill: '#A1A1AA', fontSize: 10 }} unit="%" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#161920',
+                          borderColor: 'rgba(250,204,21,0.3)',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                        }}
+                      />
+                      <Bar dataKey="avgAchievement" name="Annual Avg %" fill="#D4AF37" radius={[4, 4, 0, 0]} maxBarSize={44} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
               <div>
                 <div className="text-xs font-medium text-[#D4AF37] mb-3">
                   Department-Wise Achievement Summary
                 </div>
-                <div className="h-[190px]">
+                <div className="h-[180px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={deptComparison.filter((d) => d.count > 0)}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                      <XAxis dataKey="code" tick={{ fill: '#A1A1AA', fontSize: 11 }} />
-                      <YAxis tick={{ fill: '#A1A1AA', fontSize: 11 }} unit="%" />
+                      <XAxis dataKey="code" tick={{ fill: '#A1A1AA', fontSize: 10 }} />
+                      <YAxis tick={{ fill: '#A1A1AA', fontSize: 10 }} unit="%" />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: '#161920',
@@ -673,54 +778,6 @@ export function ReportsView() {
                       />
                       <Bar dataKey="avgAchievement" name="Avg %" fill="#FACC15" radius={[4, 4, 0, 0]} maxBarSize={44} />
                     </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              <div>
-                <div className="text-xs font-medium text-[#D4AF37] mb-3">
-                  Monthly & Yearly Trajectory Snapshot
-                </div>
-                <div className="h-[190px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    {yearlyDetailed.length > 1 && effectiveYear === 0 ? (
-                      <BarChart data={yearlyDetailed}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                        <XAxis dataKey="label" tick={{ fill: '#A1A1AA', fontSize: 11 }} />
-                        <YAxis tick={{ fill: '#A1A1AA', fontSize: 11 }} unit="%" />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: '#161920',
-                            borderColor: 'rgba(250,204,21,0.3)',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                          }}
-                        />
-                        <Bar dataKey="avgAchievement" name="Annual Avg %" fill="#D4AF37" radius={[4, 4, 0, 0]} maxBarSize={44} />
-                      </BarChart>
-                    ) : (
-                      <LineChart data={monthlyDetailed}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                        <XAxis dataKey="label" tick={{ fill: '#A1A1AA', fontSize: 11 }} />
-                        <YAxis tick={{ fill: '#A1A1AA', fontSize: 11 }} unit="%" />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: '#161920',
-                            borderColor: 'rgba(250,204,21,0.3)',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                          }}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="avgAchievement"
-                          name="Monthly Avg %"
-                          stroke="#FACC15"
-                          strokeWidth={2.5}
-                          dot={{ r: 3.5, fill: '#FACC15' }}
-                        />
-                      </LineChart>
-                    )}
                   </ResponsiveContainer>
                 </div>
               </div>
@@ -737,15 +794,18 @@ export function ReportsView() {
                 {(
                   [
                     { id: 'all', label: 'All Summaries + Details' },
-                    { id: 'department', label: `Department-Wise (${deptComparison.filter((d) => d.count > 0).length})` },
                     { id: 'monthly', label: `Monthly-Wise (${activeMonthlyRows.length})` },
                     { id: 'yearly', label: `Yearly-Wise (${yearlyDetailed.length})` },
+                    { id: 'department', label: `Department-Wise (${deptComparison.filter((d) => d.count > 0).length})` },
                   ] as const
                 ).map((t) => (
                   <button
                     key={t.id}
                     type="button"
-                    onClick={() => setSummaryTab(t.id)}
+                    onClick={() => {
+                      setSummaryTab(t.id);
+                      if (t.id !== 'all') setDetailGroupMode(t.id);
+                    }}
                     className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                       summaryTab === t.id
                         ? 'bg-[#FACC15] text-black font-semibold'
@@ -767,7 +827,100 @@ export function ReportsView() {
               </div>
             ) : (
               <>
-                {/* 1. Department-Wise Summary Table */}
+                {/* 1. Monthly-Wise Summary Table */}
+                {(summaryTab === 'all' || summaryTab === 'monthly') && (
+                  <div className="space-y-2.5">
+                    <h3 className="text-xs font-bold text-[#FACC15] tracking-wide">
+                      Monthly-Wise KPI Performance Summary ({activeMonthlyRows.length} Active Months)
+                    </h3>
+                    <div className="overflow-x-auto border border-white/8 rounded-lg">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-white/10 text-[11px] text-zinc-400 bg-[#0B0D11]">
+                            <th className="py-2.5 px-3">Month</th>
+                            <th className="py-2.5 px-3 text-right">KPIs</th>
+                            <th className="py-2.5 px-3 text-right">Departments</th>
+                            <th className="py-2.5 px-3 text-right">Target Sum</th>
+                            <th className="py-2.5 px-3 text-right">Actual Sum</th>
+                            <th className="py-2.5 px-3 text-right">Achieved</th>
+                            <th className="py-2.5 px-3 text-right">Nearly</th>
+                            <th className="py-2.5 px-3 text-right">Needs Imp.</th>
+                            <th className="py-2.5 px-3 text-right">Critical</th>
+                            <th className="py-2.5 px-3 text-right">Avg Achievement</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/6 text-xs">
+                          {(summaryTab === 'monthly' ? monthlyDetailed : activeMonthlyRows).map((m) => (
+                            <tr key={m.month} className={m.count === 0 ? 'opacity-45' : ''}>
+                              <td className="py-2.5 px-3 font-medium text-zinc-100">{MONTH_NAMES[m.month - 1]}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular">{m.count}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular text-zinc-400">{m.departmentsCount}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular">{m.targetSum.toLocaleString()}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular">{m.actualSum.toLocaleString()}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular text-emerald-400">{m.achievedCount}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular text-[#FACC15]">{m.nearlyCount}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular text-amber-400">{m.needsImprovementCount}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular text-rose-400">{m.criticalCount}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular font-semibold text-[#FACC15]">
+                                {m.count > 0 ? `${m.avgAchievement.toFixed(1)}%` : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                          {summaryTab === 'all' && activeMonthlyRows.length === 0 && (
+                            <tr>
+                              <td colSpan={10} className="py-4 text-center text-xs text-zinc-500">
+                                No Monthly-cadence KPI records found in current filter scope.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Yearly-Wise Summary Table */}
+                {(summaryTab === 'all' || summaryTab === 'yearly') && yearlyDetailed.length > 0 && (
+                  <div className="space-y-2.5">
+                    <h3 className="text-xs font-bold text-[#FACC15] tracking-wide">
+                      Yearly-Wise KPI Performance Summary
+                    </h3>
+                    <div className="overflow-x-auto border border-white/8 rounded-lg">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-white/10 text-[11px] text-zinc-400 bg-[#0B0D11]">
+                            <th className="py-2.5 px-3">Fiscal Year</th>
+                            <th className="py-2.5 px-3 text-right">KPIs</th>
+                            <th className="py-2.5 px-3 text-right">Departments</th>
+                            <th className="py-2.5 px-3 text-right">Target Sum</th>
+                            <th className="py-2.5 px-3 text-right">Actual Sum</th>
+                            <th className="py-2.5 px-3 text-right">Achieved</th>
+                            <th className="py-2.5 px-3 text-right">Critical</th>
+                            <th className="py-2.5 px-3 text-right">Avg Achievement</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/6 text-xs">
+                          {yearlyDetailed.map((y) => (
+                            <tr key={y.year}>
+                              <td className="py-2.5 px-3 font-mono-tabular font-semibold text-zinc-100">FY {y.year}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular">{y.count}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular text-zinc-400">{y.departmentsCount}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular">{y.targetSum.toLocaleString()}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular">{y.actualSum.toLocaleString()}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular text-emerald-400">{y.achievedCount}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular text-rose-400">{y.criticalCount}</td>
+                              <td className="py-2.5 px-3 text-right font-mono-tabular font-semibold text-[#FACC15]">
+                                {y.avgAchievement.toFixed(1)}%
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Department-Wise Summary Table */}
                 {(summaryTab === 'all' || summaryTab === 'department') && (
                   <div className="space-y-2.5">
                     <h3 className="text-xs font-bold text-[#FACC15] tracking-wide">
@@ -814,161 +967,115 @@ export function ReportsView() {
                   </div>
                 )}
 
-                {/* 2. Monthly-Wise Summary Table */}
-                {(summaryTab === 'all' || summaryTab === 'monthly') && activeMonthlyRows.length > 0 && (
-                  <div className="space-y-2.5">
-                    <h3 className="text-xs font-bold text-[#FACC15] tracking-wide">
-                      Monthly-Wise KPI Performance Summary
+                {/* 4. Full Detailed KPI Records Table (Grouped Monthly-Wise / Yearly-Wise / Dept-Wise / Flat) */}
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h3 className="text-xs font-bold text-white tracking-wide">
+                      Detailed KPI Performance Register ({reportRecords.length})
                     </h3>
-                    <div className="overflow-x-auto border border-white/8 rounded-lg">
+                    <div className="flex items-center gap-1 p-0.5 bg-[#161920] rounded-lg border border-white/8 no-print">
+                      {(
+                        [
+                          { id: 'monthly', label: 'Group: Monthly-Wise' },
+                          { id: 'yearly', label: 'Group: Yearly-Wise' },
+                          { id: 'department', label: 'Group: Department-Wise' },
+                          { id: 'flat', label: 'Flat List' },
+                        ] as const
+                      ).map((gm) => (
+                        <button
+                          key={gm.id}
+                          type="button"
+                          onClick={() => setDetailGroupMode(gm.id)}
+                          className={`px-2.5 py-1 rounded text-[11px] font-medium cursor-pointer whitespace-nowrap ${
+                            detailGroupMode === gm.id
+                              ? 'bg-[#FACC15] text-black font-semibold'
+                              : 'text-zinc-400 hover:text-white'
+                          }`}
+                        >
+                          {gm.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {groupedDetailSections.map((sec) => (
+                    <div key={sec.key} className="overflow-x-auto border border-white/8 rounded-lg">
+                      {detailGroupMode !== 'flat' && (
+                        <div className="px-3.5 py-2 bg-[#0B0D11] border-b border-white/10 flex items-center justify-between text-xs">
+                          <span className="font-semibold text-[#FACC15]">{sec.title}</span>
+                          <span className="font-mono-tabular text-zinc-300">
+                            Avg Achievement: <span className="text-[#FACC15] font-semibold">{sec.avg.toFixed(1)}%</span>
+                          </span>
+                        </div>
+                      )}
                       <table className="w-full text-left border-collapse">
                         <thead>
                           <tr className="border-b border-white/10 text-[11px] text-zinc-400 bg-[#0B0D11]">
-                            <th className="py-2.5 px-3">Month</th>
-                            <th className="py-2.5 px-3 text-right">KPIs</th>
-                            <th className="py-2.5 px-3 text-right">Departments</th>
-                            <th className="py-2.5 px-3 text-right">Target Sum</th>
-                            <th className="py-2.5 px-3 text-right">Actual Sum</th>
-                            <th className="py-2.5 px-3 text-right">Achieved</th>
-                            <th className="py-2.5 px-3 text-right">Critical</th>
-                            <th className="py-2.5 px-3 text-right">Avg Achievement</th>
+                            <th className="py-2.5 px-3">KPI Title & Details</th>
+                            <th className="py-2.5 px-3">Department</th>
+                            <th className="py-2.5 px-3">Period</th>
+                            <th className="py-2.5 px-3 text-right">Target</th>
+                            <th className="py-2.5 px-3 text-right">Actual</th>
+                            <th className="py-2.5 px-3 text-right">Achievement</th>
+                            <th className="py-2.5 px-3">Status</th>
+                            <th className="py-2.5 px-3">Submitted By & Remarks</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/6 text-xs">
-                          {activeMonthlyRows.map((m) => (
-                            <tr key={m.month}>
-                              <td className="py-2.5 px-3 font-medium text-zinc-100">{MONTH_NAMES[m.month - 1]}</td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular">{m.count}</td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular text-zinc-400">{m.departmentsCount}</td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular">{m.targetSum.toLocaleString()}</td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular">{m.actualSum.toLocaleString()}</td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular text-emerald-400">{m.achievedCount}</td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular text-rose-400">{m.criticalCount}</td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular font-semibold text-[#FACC15]">
-                                {m.avgAchievement.toFixed(1)}%
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {/* 3. Yearly-Wise Summary Table */}
-                {(summaryTab === 'all' || summaryTab === 'yearly') && yearlyDetailed.length > 0 && (
-                  <div className="space-y-2.5">
-                    <h3 className="text-xs font-bold text-[#FACC15] tracking-wide">
-                      Yearly-Wise KPI Performance Summary
-                    </h3>
-                    <div className="overflow-x-auto border border-white/8 rounded-lg">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="border-b border-white/10 text-[11px] text-zinc-400 bg-[#0B0D11]">
-                            <th className="py-2.5 px-3">Fiscal Year</th>
-                            <th className="py-2.5 px-3 text-right">KPIs</th>
-                            <th className="py-2.5 px-3 text-right">Departments</th>
-                            <th className="py-2.5 px-3 text-right">Target Sum</th>
-                            <th className="py-2.5 px-3 text-right">Actual Sum</th>
-                            <th className="py-2.5 px-3 text-right">Achieved</th>
-                            <th className="py-2.5 px-3 text-right">Critical</th>
-                            <th className="py-2.5 px-3 text-right">Avg Achievement</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/6 text-xs">
-                          {yearlyDetailed.map((y) => (
-                            <tr key={y.year}>
-                              <td className="py-2.5 px-3 font-mono-tabular font-semibold text-zinc-100">FY {y.year}</td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular">{y.count}</td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular text-zinc-400">{y.departmentsCount}</td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular">{y.targetSum.toLocaleString()}</td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular">{y.actualSum.toLocaleString()}</td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular text-emerald-400">{y.achievedCount}</td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular text-rose-400">{y.criticalCount}</td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular font-semibold text-[#FACC15]">
-                                {y.avgAchievement.toFixed(1)}%
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {/* 4. Full Detailed KPI Records Table */}
-                <div className="space-y-2.5">
-                  <h3 className="text-xs font-bold text-white tracking-wide">
-                    Detailed KPI Performance Register ({reportRecords.length})
-                  </h3>
-                  <div className="overflow-x-auto border border-white/8 rounded-lg">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/10 text-[11px] text-zinc-400 bg-[#0B0D11]">
-                          <th className="py-2.5 px-3">KPI Title & Details</th>
-                          <th className="py-2.5 px-3">Department</th>
-                          <th className="py-2.5 px-3">Period</th>
-                          <th className="py-2.5 px-3 text-right">Target</th>
-                          <th className="py-2.5 px-3 text-right">Actual</th>
-                          <th className="py-2.5 px-3 text-right">Achievement</th>
-                          <th className="py-2.5 px-3">Status</th>
-                          <th className="py-2.5 px-3">Submitted By & Remarks</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/6 text-xs">
-                        {reportRecords.map((r) => {
-                          const st = getStatusColor(r.status);
-                          return (
-                            <tr key={r.id}>
-                              <td className="py-2.5 px-3 max-w-[260px]">
-                                <div className="font-medium text-zinc-100">{r.kpiTitle}</div>
-                                <div className="text-[11px] text-[#D4AF37]">
-                                  {r.categoryName}
-                                  {r.isEmployeeSpecific && r.employeeName ? ` · Employee: ${r.employeeName}` : ''}
-                                </div>
-                                {r.kpiDescription && r.kpiDescription !== r.kpiTitle && (
-                                  <div className="text-[11px] text-zinc-500 truncate mt-0.5">
-                                    {r.kpiDescription}
+                          {sec.records.map((r) => {
+                            const st = getStatusColor(r.status);
+                            return (
+                              <tr key={r.id}>
+                                <td className="py-2.5 px-3 max-w-[260px]">
+                                  <div className="font-medium text-zinc-100">{r.kpiTitle}</div>
+                                  <div className="text-[11px] text-[#D4AF37]">
+                                    {r.categoryName}
+                                    {r.isEmployeeSpecific && r.employeeName ? ` · Employee: ${r.employeeName}` : ''}
                                   </div>
-                                )}
-                              </td>
-                              <td className="py-2.5 px-3 text-zinc-300 whitespace-nowrap">{r.departmentName}</td>
-                              <td className="py-2.5 px-3 font-mono-tabular text-zinc-400 whitespace-nowrap">
-                                {r.reportingPeriod} · {formatPeriodLabel(r)}
-                              </td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular whitespace-nowrap">
-                                {r.targetValue.toLocaleString()} {r.unit}
-                              </td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular whitespace-nowrap">
-                                {r.actualValue.toLocaleString()} {r.unit}
-                              </td>
-                              <td className="py-2.5 px-3 text-right font-mono-tabular font-semibold text-[#FACC15] whitespace-nowrap">
-                                {r.achievementPct.toFixed(1)}%
-                              </td>
-                              <td className={`py-2.5 px-3 font-medium whitespace-nowrap ${st.text}`}>{r.status}</td>
-                              <td className="py-2.5 px-3 max-w-[240px]">
-                                <div className="text-zinc-300 truncate">
-                                  {r.submittedByName || r.submittedByEmail} · {formatShortDate(r.submissionDate)}
-                                </div>
-                                <div className="text-[11px] text-zinc-400 truncate mt-0.5">{r.remarks || '—'}</div>
-                                {r.evidenceUrl && (
-                                  <a
-                                    href={r.evidenceUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-[11px] text-[#FACC15] hover:underline mt-0.5"
-                                  >
-                                    <ExternalLink className="w-3 h-3" />
-                                    {r.evidenceName || 'Evidence'}
-                                  </a>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                                  {r.kpiDescription && r.kpiDescription !== r.kpiTitle && (
+                                    <div className="text-[11px] text-zinc-500 truncate mt-0.5">
+                                      {r.kpiDescription}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="py-2.5 px-3 text-zinc-300 whitespace-nowrap">{r.departmentName}</td>
+                                <td className="py-2.5 px-3 font-mono-tabular text-zinc-400 whitespace-nowrap">
+                                  {r.reportingPeriod} · {formatPeriodLabel(r)}
+                                </td>
+                                <td className="py-2.5 px-3 text-right font-mono-tabular whitespace-nowrap">
+                                  {r.targetValue.toLocaleString()} {r.unit}
+                                </td>
+                                <td className="py-2.5 px-3 text-right font-mono-tabular whitespace-nowrap">
+                                  {r.actualValue.toLocaleString()} {r.unit}
+                                </td>
+                                <td className="py-2.5 px-3 text-right font-mono-tabular font-semibold text-[#FACC15] whitespace-nowrap">
+                                  {r.achievementPct.toFixed(1)}%
+                                </td>
+                                <td className={`py-2.5 px-3 font-medium whitespace-nowrap ${st.text}`}>{r.status}</td>
+                                <td className="py-2.5 px-3 max-w-[240px]">
+                                  <div className="text-zinc-300 truncate">
+                                    {r.submittedByName || r.submittedByEmail} · {formatShortDate(r.submissionDate)}
+                                  </div>
+                                  <div className="text-[11px] text-zinc-400 truncate mt-0.5">{r.remarks || '—'}</div>
+                                  {r.evidenceUrl && (
+                                    <a
+                                      href={r.evidenceUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-[11px] text-[#FACC15] hover:underline mt-0.5"
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                      {r.evidenceName || 'Evidence'}
+                                    </a>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
                 </div>
               </>
             )}

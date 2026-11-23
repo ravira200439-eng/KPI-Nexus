@@ -6,7 +6,7 @@ export function filterRecords(records: KpiRecord[], filters: DashboardFilters): 
     if (filters.departmentId !== 'all' && r.departmentId !== filters.departmentId) return false;
     if (filters.year !== 0 && r.reportingYear !== filters.year) return false;
     if (filters.quarter !== 0 && r.reportingQuarter !== filters.quarter) return false;
-    if (filters.month !== 0 && r.reportingMonth !== filters.month) return false;
+    if (filters.month !== 0 && getRecordEffectiveMonth(r) !== filters.month) return false;
     if (filters.categoryId !== 'all' && r.categoryId !== filters.categoryId) return false;
     if (filters.status !== 'all' && r.status !== filters.status) return false;
     if (filters.periodType !== 'all' && r.reportingPeriod !== filters.periodType) return false;
@@ -184,6 +184,27 @@ export function computeMonthlyTrends(records: KpiRecord[]) {
   }));
 }
 
+export function getRecordEffectiveMonth(r: KpiRecord): number {
+  const m = Number(r.reportingMonth);
+  if (Number.isFinite(m) && m >= 1 && m <= 12) {
+    return Math.round(m);
+  }
+  if (r.reportingPeriod === 'Monthly' && r.submissionDate) {
+    try {
+      const d =
+        typeof r.submissionDate?.toDate === 'function'
+          ? r.submissionDate.toDate()
+          : new Date(r.submissionDate);
+      if (d instanceof Date && !Number.isNaN(d.getTime())) {
+        return d.getMonth() + 1;
+      }
+    } catch {
+      // ignore invalid timestamp
+    }
+  }
+  return 0;
+}
+
 export function computeMonthlyDetailedRows(records: KpiRecord[]): MonthlyDetailedRow[] {
   const buckets = MONTH_SHORT.map((label, idx) => ({
     month: idx + 1,
@@ -200,12 +221,13 @@ export function computeMonthlyDetailedRows(records: KpiRecord[]): MonthlyDetaile
   }));
 
   for (const r of records) {
-    if (r.reportingMonth >= 1 && r.reportingMonth <= 12) {
-      const b = buckets[r.reportingMonth - 1];
+    const m = getRecordEffectiveMonth(r);
+    if (m >= 1 && m <= 12) {
+      const b = buckets[m - 1];
       b.count += 1;
-      b.pctSum += r.achievementPct;
-      b.targetSum += r.targetValue;
-      b.actualSum += r.actualValue;
+      b.pctSum += Number(r.achievementPct) || 0;
+      b.targetSum += Number(r.targetValue) || 0;
+      b.actualSum += Number(r.actualValue) || 0;
       b.deptIds.add(r.departmentId);
       if (r.status === 'Target Achieved') b.achievedCount += 1;
       else if (r.status === 'Nearly Achieved') b.nearlyCount += 1;

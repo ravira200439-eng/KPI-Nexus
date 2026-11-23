@@ -32,6 +32,7 @@ import {
   computeMonthlyDetailedRows,
   computeOverviewMetrics,
   computeYearlyDetailedRows,
+  getRecordEffectiveMonth,
 } from '../lib/analytics';
 import { formatPeriodLabel, formatShortDate, getStatusColor, MONTH_NAMES } from '../lib/kpiMath';
 
@@ -91,7 +92,7 @@ export function PresentationModeView() {
     return records.filter((r) => {
       if (selectedDeptIds.length > 0 && !selectedDeptIds.includes(r.departmentId)) return false;
       if (selectedYear !== 0 && r.reportingYear !== selectedYear) return false;
-      if (selectedMonth !== 0 && r.reportingMonth !== selectedMonth) return false;
+      if (selectedMonth !== 0 && getRecordEffectiveMonth(r) !== selectedMonth) return false;
       return true;
     });
   }, [records, selectedDeptIds, selectedYear, selectedMonth]);
@@ -99,7 +100,7 @@ export function PresentationModeView() {
   const yearScopedRecords = useMemo(() => {
     return records.filter((r) => {
       if (selectedDeptIds.length > 0 && !selectedDeptIds.includes(r.departmentId)) return false;
-      if (selectedMonth !== 0 && r.reportingMonth !== selectedMonth) return false;
+      if (selectedMonth !== 0 && getRecordEffectiveMonth(r) !== selectedMonth) return false;
       return true;
     });
   }, [records, selectedDeptIds, selectedMonth]);
@@ -269,54 +270,102 @@ export function PresentationModeView() {
 
   const renderSlideBody = (slide: Slide) => {
     if (slide.kind === 'consolidated') {
+      const activeMonthsSummary = monthlyDetailed.filter((m) => m.count > 0);
       return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-          <div className="grid grid-cols-2 gap-5">
-            <div className="bg-[#12151C] border border-[#FACC15]/25 rounded-2xl p-6">
-              <div className="text-sm text-zinc-400">Overall Company Achievement</div>
-              <div className="text-5xl font-bold text-[#FACC15] font-mono-tabular mt-3">
-                {metrics.avgAchievement.toFixed(1)}%
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+            <div className="grid grid-cols-2 gap-5">
+              <div className="bg-[#12151C] border border-[#FACC15]/25 rounded-2xl p-6">
+                <div className="text-sm text-zinc-400">Overall Company Achievement</div>
+                <div className="text-5xl font-bold text-[#FACC15] font-mono-tabular mt-3">
+                  {metrics.avgAchievement.toFixed(1)}%
+                </div>
+              </div>
+              <div className="bg-[#12151C] border border-white/10 rounded-2xl p-6">
+                <div className="text-sm text-zinc-400">Total KPIs Evaluated</div>
+                <div className="text-5xl font-bold text-white font-mono-tabular mt-3">
+                  {metrics.totalKpis}
+                </div>
+              </div>
+              <div className="bg-[#12151C] border border-emerald-500/25 rounded-2xl p-6">
+                <div className="text-sm text-zinc-400">Target Achieved</div>
+                <div className="text-4xl font-bold text-emerald-400 font-mono-tabular mt-3">
+                  {metrics.achievedCount}
+                </div>
+              </div>
+              <div className="bg-[#12151C] border border-rose-500/25 rounded-2xl p-6">
+                <div className="text-sm text-zinc-400">Critical Attention</div>
+                <div className="text-4xl font-bold text-rose-400 font-mono-tabular mt-3">
+                  {metrics.criticalCount}
+                </div>
               </div>
             </div>
-            <div className="bg-[#12151C] border border-white/10 rounded-2xl p-6">
-              <div className="text-sm text-zinc-400">Total KPIs Evaluated</div>
-              <div className="text-5xl font-bold text-white font-mono-tabular mt-3">
-                {metrics.totalKpis}
+
+            <div className="bg-[#12151C] border border-white/10 rounded-2xl p-6 h-[320px]">
+              <div className="text-base font-semibold text-white mb-4 font-display">
+                Department Leaderboard
               </div>
-            </div>
-            <div className="bg-[#12151C] border border-emerald-500/25 rounded-2xl p-6">
-              <div className="text-sm text-zinc-400">Target Achieved</div>
-              <div className="text-4xl font-bold text-emerald-400 font-mono-tabular mt-3">
-                {metrics.achievedCount}
-              </div>
-            </div>
-            <div className="bg-[#12151C] border border-rose-500/25 rounded-2xl p-6">
-              <div className="text-sm text-zinc-400">Critical Attention</div>
-              <div className="text-4xl font-bold text-rose-400 font-mono-tabular mt-3">
-                {metrics.criticalCount}
-              </div>
+              <ResponsiveContainer width="100%" height="86%">
+                <BarChart data={deptComparison}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
+                  <XAxis dataKey="code" tick={{ fill: '#D4D4D8', fontSize: 13 }} />
+                  <YAxis tick={{ fill: '#D4D4D8', fontSize: 13 }} unit="%" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#161920',
+                      borderColor: '#FACC15',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Bar dataKey="avgAchievement" name="Avg %" fill="#FACC15" radius={[8, 8, 0, 0]} maxBarSize={56} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="bg-[#12151C] border border-white/10 rounded-2xl p-6 h-[360px]">
-            <div className="text-base font-semibold text-white mb-4 font-display">
-              Department Leaderboard
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-[#12151C] border border-white/10 rounded-xl p-4">
+              <div className="text-xs font-semibold text-[#D4AF37] mb-2.5">
+                Monthly-Wise Snapshot ({activeMonthsSummary.length} Active Months)
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {activeMonthsSummary.map((m) => (
+                  <div
+                    key={m.month}
+                    className="px-3 py-1.5 rounded-lg bg-[#0B0D11] border border-white/8 text-xs flex items-center gap-2"
+                  >
+                    <span className="text-zinc-300 font-medium">{m.label}</span>
+                    <span className="font-mono-tabular font-semibold text-[#FACC15]">
+                      {m.avgAchievement.toFixed(1)}%
+                    </span>
+                    <span className="text-[11px] text-zinc-500 font-mono-tabular">({m.count})</span>
+                  </div>
+                ))}
+                {activeMonthsSummary.length === 0 && (
+                  <span className="text-xs text-zinc-500">No monthly KPI records in current scope.</span>
+                )}
+              </div>
             </div>
-            <ResponsiveContainer width="100%" height="88%">
-              <BarChart data={deptComparison}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
-                <XAxis dataKey="code" tick={{ fill: '#D4D4D8', fontSize: 13 }} />
-                <YAxis tick={{ fill: '#D4D4D8', fontSize: 13 }} unit="%" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#161920',
-                    borderColor: '#FACC15',
-                    borderRadius: '8px',
-                  }}
-                />
-                <Bar dataKey="avgAchievement" name="Avg %" fill="#FACC15" radius={[8, 8, 0, 0]} maxBarSize={56} />
-              </BarChart>
-            </ResponsiveContainer>
+
+            <div className="bg-[#12151C] border border-white/10 rounded-xl p-4">
+              <div className="text-xs font-semibold text-[#D4AF37] mb-2.5">
+                Yearly-Wise Snapshot ({yearlyDetailed.length} Fiscal Years)
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {yearlyDetailed.map((y) => (
+                  <div
+                    key={y.year}
+                    className="px-3 py-1.5 rounded-lg bg-[#0B0D11] border border-white/8 text-xs flex items-center gap-2"
+                  >
+                    <span className="text-zinc-300 font-mono-tabular font-medium">FY {y.year}</span>
+                    <span className="font-mono-tabular font-semibold text-[#FACC15]">
+                      {y.avgAchievement.toFixed(1)}%
+                    </span>
+                    <span className="text-[11px] text-zinc-500 font-mono-tabular">({y.count} KPIs)</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -325,23 +374,26 @@ export function PresentationModeView() {
     if (slide.kind === 'monthly') {
       const activeMonths = monthlyDetailed.filter((m) => m.count > 0);
       const effectiveMonth =
-        focusedSlideMonth > 0
-          ? focusedSlideMonth
-          : selectedMonth > 0
-            ? selectedMonth
-            : activeMonths[activeMonths.length - 1]?.month || 0;
+        focusedSlideMonth > 0 ? focusedSlideMonth : selectedMonth > 0 ? selectedMonth : 0;
 
-      const monthRecords =
+      const monthRecords = (
         effectiveMonth > 0
-          ? scopedRecords.filter((r) => r.reportingMonth === effectiveMonth)
-          : scopedRecords;
+          ? scopedRecords.filter((r) => getRecordEffectiveMonth(r) === effectiveMonth)
+          : scopedRecords.filter((r) => getRecordEffectiveMonth(r) >= 1)
+      ).sort(
+        (a, b) =>
+          b.reportingYear - a.reportingYear ||
+          getRecordEffectiveMonth(b) - getRecordEffectiveMonth(a)
+      );
+
+      const fallbackRecords = monthRecords.length > 0 ? monthRecords : scopedRecords;
 
       return (
         <div className="space-y-5">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-[#12151C] border border-white/10 rounded-xl p-5 h-[260px]">
               <div className="text-sm font-semibold text-white mb-2 font-display">
-                Monthly Achievement Curve (Jan–Dec)
+                Monthly-Wise Achievement Curve (Jan–Dec)
               </div>
               <ResponsiveContainer width="100%" height="86%">
                 <BarChart data={monthlyDetailed}>
@@ -364,7 +416,7 @@ export function PresentationModeView() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-white/10 text-[11px] text-zinc-400 bg-[#0B0D11]">
-                    <th className="py-2.5 px-3">Month</th>
+                    <th className="py-2.5 px-3">Month (Click to Filter)</th>
                     <th className="py-2.5 px-3 text-right">KPIs</th>
                     <th className="py-2.5 px-3 text-right">Depts</th>
                     <th className="py-2.5 px-3 text-right">Avg %</th>
@@ -373,12 +425,33 @@ export function PresentationModeView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/6 text-xs">
-                  {activeMonths.map((m) => (
+                  <tr
+                    onClick={() => setFocusedSlideMonth(0)}
+                    className={`cursor-pointer transition-colors ${
+                      effectiveMonth === 0 ? 'bg-[#FACC15]/10' : 'hover:bg-white/[0.03]'
+                    }`}
+                  >
+                    <td className="py-2 px-3 font-semibold text-[#FACC15]">All Months Combined</td>
+                    <td className="py-2 px-3 text-right font-mono-tabular text-zinc-300">
+                      {activeMonths.reduce((acc, m) => acc + m.count, 0)}
+                    </td>
+                    <td className="py-2 px-3 text-right font-mono-tabular text-zinc-400">—</td>
+                    <td className="py-2 px-3 text-right font-mono-tabular font-semibold text-[#FACC15]">
+                      {metrics.avgAchievement.toFixed(1)}%
+                    </td>
+                    <td className="py-2 px-3 text-right font-mono-tabular text-emerald-400">
+                      {activeMonths.reduce((acc, m) => acc + m.achievedCount, 0)}
+                    </td>
+                    <td className="py-2 px-3 text-right font-mono-tabular text-rose-400">
+                      {activeMonths.reduce((acc, m) => acc + m.criticalCount, 0)}
+                    </td>
+                  </tr>
+                  {monthlyDetailed.map((m) => (
                     <tr
                       key={m.month}
-                      onClick={() => setFocusedSlideMonth(m.month)}
-                      className={`cursor-pointer transition-colors ${
-                        effectiveMonth === m.month ? 'bg-[#FACC15]/10' : 'hover:bg-white/[0.03]'
+                      onClick={() => m.count > 0 && setFocusedSlideMonth(m.month)}
+                      className={`transition-colors ${m.count > 0 ? 'cursor-pointer' : 'opacity-45'} ${
+                        effectiveMonth === m.month ? 'bg-[#FACC15]/10' : m.count > 0 ? 'hover:bg-white/[0.03]' : ''
                       }`}
                     >
                       <td className="py-2 px-3 font-medium text-white">
@@ -387,33 +460,37 @@ export function PresentationModeView() {
                       <td className="py-2 px-3 text-right font-mono-tabular text-zinc-300">{m.count}</td>
                       <td className="py-2 px-3 text-right font-mono-tabular text-zinc-400">{m.departmentsCount}</td>
                       <td className="py-2 px-3 text-right font-mono-tabular font-semibold text-[#FACC15]">
-                        {m.avgAchievement.toFixed(1)}%
+                        {m.count > 0 ? `${m.avgAchievement.toFixed(1)}%` : '—'}
                       </td>
                       <td className="py-2 px-3 text-right font-mono-tabular text-emerald-400">{m.achievedCount}</td>
                       <td className="py-2 px-3 text-right font-mono-tabular text-rose-400">{m.criticalCount}</td>
                     </tr>
                   ))}
-                  {activeMonths.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-6 text-center text-zinc-500">
-                        No monthly KPI submissions found.
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
           </div>
 
           <div className="bg-[#12151C] border border-white/10 rounded-xl overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-white/8 bg-[#0B0D11] flex items-center justify-between text-xs">
+            <div className="px-4 py-2.5 border-b border-white/8 bg-[#0B0D11] flex items-center justify-between gap-3 text-xs flex-wrap">
               <span className="font-semibold text-white">
                 {effectiveMonth > 0
-                  ? `${MONTH_NAMES[effectiveMonth - 1]} KPI Details (${monthRecords.length})`
-                  : `All Monthly KPI Details (${monthRecords.length})`}
+                  ? `${MONTH_NAMES[effectiveMonth - 1]} KPI Details (${fallbackRecords.length})`
+                  : `All Monthly KPI Details (${fallbackRecords.length})`}
               </span>
-              {activeMonths.length > 1 && (
+              {activeMonths.length > 0 && (
                 <div className="flex items-center gap-1 overflow-x-auto">
+                  <button
+                    type="button"
+                    onClick={() => setFocusedSlideMonth(0)}
+                    className={`px-2 py-0.5 rounded text-[11px] cursor-pointer whitespace-nowrap ${
+                      effectiveMonth === 0
+                        ? 'bg-[#FACC15] text-black font-semibold'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    All Months
+                  </button>
                   {activeMonths.map((m) => (
                     <button
                       key={m.month}
@@ -425,55 +502,66 @@ export function PresentationModeView() {
                           : 'text-zinc-400 hover:text-white'
                       }`}
                     >
-                      {m.label}
+                      {m.label} ({m.count})
                     </button>
                   ))}
                 </div>
               )}
             </div>
-            <div className="max-h-[210px] overflow-y-auto">
+            <div className="max-h-[240px] overflow-y-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-white/8 text-[11px] text-zinc-400">
                     <th className="py-2 px-3">KPI Title & Details</th>
                     <th className="py-2 px-3">Department</th>
+                    <th className="py-2 px-3">Month / Period</th>
                     <th className="py-2 px-3 text-right">Target</th>
                     <th className="py-2 px-3 text-right">Actual</th>
                     <th className="py-2 px-3 text-right">Achievement</th>
                     <th className="py-2 px-3">Status</th>
-                    <th className="py-2 px-3">Remarks</th>
+                    <th className="py-2 px-3">Submitted By & Remarks</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/6 text-xs">
-                  {monthRecords.map((r) => (
+                  {fallbackRecords.map((r) => (
                     <tr key={r.id}>
-                      <td className="py-2 px-3">
+                      <td className="py-2 px-3 max-w-[260px]">
                         <div className="font-medium text-white">{r.kpiTitle}</div>
-                        <div className="text-[11px] text-zinc-400">
+                        <div className="text-[11px] text-[#D4AF37]">
                           {r.categoryName}
                           {r.isEmployeeSpecific && r.employeeName ? ` · Employee: ${r.employeeName}` : ''}
-                          {r.submittedByName ? ` · By ${r.submittedByName}` : ''}
                         </div>
+                        {r.kpiDescription && r.kpiDescription !== r.kpiTitle && (
+                          <div className="text-[11px] text-zinc-500 truncate">{r.kpiDescription}</div>
+                        )}
                       </td>
-                      <td className="py-2 px-3 text-zinc-300">{r.departmentName}</td>
-                      <td className="py-2 px-3 text-right font-mono-tabular text-zinc-300">
+                      <td className="py-2 px-3 text-zinc-300 whitespace-nowrap">{r.departmentName}</td>
+                      <td className="py-2 px-3 font-mono-tabular text-zinc-300 whitespace-nowrap">
+                        {formatPeriodLabel(r)}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono-tabular text-zinc-300 whitespace-nowrap">
                         {r.targetValue.toLocaleString()} {r.unit}
                       </td>
-                      <td className="py-2 px-3 text-right font-mono-tabular text-white">
+                      <td className="py-2 px-3 text-right font-mono-tabular text-white whitespace-nowrap">
                         {r.actualValue.toLocaleString()} {r.unit}
                       </td>
-                      <td className="py-2 px-3 text-right font-mono-tabular font-semibold text-[#FACC15]">
+                      <td className="py-2 px-3 text-right font-mono-tabular font-semibold text-[#FACC15] whitespace-nowrap">
                         {r.achievementPct.toFixed(1)}%
                       </td>
-                      <td className={`py-2 px-3 font-semibold ${getStatusColor(r.status).text}`}>
+                      <td className={`py-2 px-3 font-semibold whitespace-nowrap ${getStatusColor(r.status).text}`}>
                         {r.status}
                       </td>
-                      <td className="py-2 px-3 text-zinc-400 max-w-[200px] truncate">{r.remarks || '—'}</td>
+                      <td className="py-2 px-3 max-w-[200px]">
+                        <div className="text-zinc-300 truncate">
+                          {r.submittedByName || r.submittedByEmail} · {formatShortDate(r.submissionDate)}
+                        </div>
+                        <div className="text-[11px] text-zinc-400 truncate">{r.remarks || '—'}</div>
+                      </td>
                     </tr>
                   ))}
-                  {monthRecords.length === 0 && (
+                  {fallbackRecords.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="py-6 text-center text-zinc-500">
+                      <td colSpan={8} className="py-6 text-center text-zinc-500">
                         No KPI records recorded for this month.
                       </td>
                     </tr>
@@ -488,18 +576,14 @@ export function PresentationModeView() {
 
     if (slide.kind === 'yearly') {
       const effectiveYear =
-        focusedSlideYear > 0
-          ? focusedSlideYear
-          : selectedYear > 0
-            ? selectedYear
-            : yearlyDetailed[yearlyDetailed.length - 1]?.year || 0;
+        focusedSlideYear > 0 ? focusedSlideYear : selectedYear > 0 ? selectedYear : 0;
 
-      const yearRecords =
+      const baseRecords = selectedYear === 0 ? yearScopedRecords : scopedRecords;
+      const yearRecords = (
         effectiveYear > 0
-          ? (selectedYear === 0 ? yearScopedRecords : scopedRecords).filter(
-              (r) => r.reportingYear === effectiveYear
-            )
-          : scopedRecords;
+          ? baseRecords.filter((r) => r.reportingYear === effectiveYear)
+          : baseRecords
+      ).sort((a, b) => b.reportingYear - a.reportingYear || getRecordEffectiveMonth(b) - getRecordEffectiveMonth(a));
 
       return (
         <div className="space-y-5">
@@ -529,7 +613,7 @@ export function PresentationModeView() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-white/10 text-[11px] text-zinc-400 bg-[#0B0D11]">
-                    <th className="py-2.5 px-3">Year</th>
+                    <th className="py-2.5 px-3">Year (Click to Filter)</th>
                     <th className="py-2.5 px-3 text-right">KPIs</th>
                     <th className="py-2.5 px-3 text-right">Depts</th>
                     <th className="py-2.5 px-3 text-right">Avg %</th>
@@ -538,6 +622,25 @@ export function PresentationModeView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/6 text-xs">
+                  <tr
+                    onClick={() => setFocusedSlideYear(0)}
+                    className={`cursor-pointer transition-colors ${
+                      effectiveYear === 0 ? 'bg-[#FACC15]/10' : 'hover:bg-white/[0.03]'
+                    }`}
+                  >
+                    <td className="py-2.5 px-3 font-semibold text-[#FACC15]">All Years Combined</td>
+                    <td className="py-2.5 px-3 text-right font-mono-tabular text-zinc-300">{baseRecords.length}</td>
+                    <td className="py-2.5 px-3 text-right font-mono-tabular text-zinc-400">—</td>
+                    <td className="py-2.5 px-3 text-right font-mono-tabular font-semibold text-[#FACC15]">
+                      {computeOverviewMetrics(baseRecords).avgAchievement.toFixed(1)}%
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono-tabular text-emerald-400">
+                      {computeOverviewMetrics(baseRecords).achievedCount}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono-tabular text-rose-400">
+                      {computeOverviewMetrics(baseRecords).criticalCount}
+                    </td>
+                  </tr>
                   {yearlyDetailed.map((y) => (
                     <tr
                       key={y.year}
@@ -556,25 +659,27 @@ export function PresentationModeView() {
                       <td className="py-2.5 px-3 text-right font-mono-tabular text-rose-400">{y.criticalCount}</td>
                     </tr>
                   ))}
-                  {yearlyDetailed.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-6 text-center text-zinc-500">
-                        No yearly records available.
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
           </div>
 
           <div className="bg-[#12151C] border border-white/10 rounded-xl overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-white/8 bg-[#0B0D11] flex items-center justify-between text-xs">
+            <div className="px-4 py-2.5 border-b border-white/8 bg-[#0B0D11] flex items-center justify-between gap-2 text-xs flex-wrap">
               <span className="font-semibold text-white">
-                {effectiveYear > 0 ? `FY ${effectiveYear} KPI Details (${yearRecords.length})` : `Yearly KPI Details`}
+                {effectiveYear > 0 ? `FY ${effectiveYear} KPI Details (${yearRecords.length})` : `All Yearly KPI Details (${yearRecords.length})`}
               </span>
-              {yearlyDetailed.length > 1 && (
+              {yearlyDetailed.length > 0 && (
                 <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setFocusedSlideYear(0)}
+                    className={`px-2 py-0.5 rounded text-[11px] cursor-pointer ${
+                      effectiveYear === 0 ? 'bg-[#FACC15] text-black font-semibold' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    All Years
+                  </button>
                   {yearlyDetailed.map((y) => (
                     <button
                       key={y.year}
@@ -584,13 +689,13 @@ export function PresentationModeView() {
                         effectiveYear === y.year ? 'bg-[#FACC15] text-black font-semibold' : 'text-zinc-400 hover:text-white'
                       }`}
                     >
-                      {y.year}
+                      {y.year} ({y.count})
                     </button>
                   ))}
                 </div>
               )}
             </div>
-            <div className="max-h-[210px] overflow-y-auto">
+            <div className="max-h-[240px] overflow-y-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-white/8 text-[11px] text-zinc-400">
@@ -601,31 +706,40 @@ export function PresentationModeView() {
                     <th className="py-2 px-3 text-right">Actual</th>
                     <th className="py-2 px-3 text-right">Achievement</th>
                     <th className="py-2 px-3">Status</th>
+                    <th className="py-2 px-3">Submitted By & Remarks</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/6 text-xs">
                   {yearRecords.map((r) => (
                     <tr key={r.id}>
-                      <td className="py-2 px-3">
+                      <td className="py-2 px-3 max-w-[260px]">
                         <div className="font-medium text-white">{r.kpiTitle}</div>
-                        <div className="text-[11px] text-zinc-400">
+                        <div className="text-[11px] text-[#D4AF37]">
                           {r.categoryName}
                           {r.isEmployeeSpecific && r.employeeName ? ` · Employee: ${r.employeeName}` : ''}
-                          {r.remarks ? ` · ${r.remarks}` : ''}
                         </div>
+                        {r.kpiDescription && r.kpiDescription !== r.kpiTitle && (
+                          <div className="text-[11px] text-zinc-500 truncate">{r.kpiDescription}</div>
+                        )}
                       </td>
-                      <td className="py-2 px-3 text-zinc-300">{r.departmentName}</td>
-                      <td className="py-2 px-3 font-mono-tabular text-zinc-400">{formatPeriodLabel(r)}</td>
-                      <td className="py-2 px-3 text-right font-mono-tabular text-zinc-300">
+                      <td className="py-2 px-3 text-zinc-300 whitespace-nowrap">{r.departmentName}</td>
+                      <td className="py-2 px-3 font-mono-tabular text-zinc-400 whitespace-nowrap">{formatPeriodLabel(r)}</td>
+                      <td className="py-2 px-3 text-right font-mono-tabular text-zinc-300 whitespace-nowrap">
                         {r.targetValue.toLocaleString()} {r.unit}
                       </td>
-                      <td className="py-2 px-3 text-right font-mono-tabular text-white">
+                      <td className="py-2 px-3 text-right font-mono-tabular text-white whitespace-nowrap">
                         {r.actualValue.toLocaleString()} {r.unit}
                       </td>
-                      <td className="py-2 px-3 text-right font-mono-tabular font-semibold text-[#FACC15]">
+                      <td className="py-2 px-3 text-right font-mono-tabular font-semibold text-[#FACC15] whitespace-nowrap">
                         {r.achievementPct.toFixed(1)}%
                       </td>
-                      <td className={`py-2 px-3 font-semibold ${getStatusColor(r.status).text}`}>{r.status}</td>
+                      <td className={`py-2 px-3 font-semibold whitespace-nowrap ${getStatusColor(r.status).text}`}>{r.status}</td>
+                      <td className="py-2 px-3 max-w-[200px]">
+                        <div className="text-zinc-300 truncate">
+                          {r.submittedByName || r.submittedByEmail} · {formatShortDate(r.submissionDate)}
+                        </div>
+                        <div className="text-[11px] text-zinc-400 truncate">{r.remarks || '—'}</div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -743,8 +857,10 @@ export function PresentationModeView() {
     if (slide.kind === 'department' && slide.departmentId) {
       const dRecords = scopedRecords.filter((r) => r.departmentId === slide.departmentId);
       const dMetrics = computeOverviewMetrics(dRecords);
+      const dMonthly = computeMonthlyDetailedRows(dRecords).filter((m) => m.count > 0);
+      const dYearly = computeYearlyDetailedRows(dRecords);
       return (
-        <div className="space-y-5">
+        <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-[#12151C] border border-[#FACC15]/25 rounded-xl p-4">
               <div className="text-xs text-zinc-400">Avg Achievement</div>
@@ -772,7 +888,41 @@ export function PresentationModeView() {
             </div>
           </div>
 
-          <div className="bg-[#12151C] border border-white/10 rounded-xl overflow-hidden max-h-[340px] overflow-y-auto">
+          {(dMonthly.length > 0 || dYearly.length > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="bg-[#12151C] border border-white/10 rounded-xl p-3">
+                <div className="text-[11px] font-semibold text-[#D4AF37] mb-2">Monthly-Wise Trend</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {dMonthly.map((m) => (
+                    <span
+                      key={m.month}
+                      className="px-2.5 py-1 rounded bg-[#0B0D11] border border-white/8 text-[11px] text-zinc-200 font-mono-tabular"
+                    >
+                      {m.label}: <span className="text-[#FACC15] font-semibold">{m.avgAchievement.toFixed(1)}%</span> ({m.count})
+                    </span>
+                  ))}
+                  {dMonthly.length === 0 && (
+                    <span className="text-[11px] text-zinc-500">No monthly breakdown for current filter.</span>
+                  )}
+                </div>
+              </div>
+              <div className="bg-[#12151C] border border-white/10 rounded-xl p-3">
+                <div className="text-[11px] font-semibold text-[#D4AF37] mb-2">Yearly-Wise Summary</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {dYearly.map((y) => (
+                    <span
+                      key={y.year}
+                      className="px-2.5 py-1 rounded bg-[#0B0D11] border border-white/8 text-[11px] text-zinc-200 font-mono-tabular"
+                    >
+                      FY {y.year}: <span className="text-[#FACC15] font-semibold">{y.avgAchievement.toFixed(1)}%</span> ({y.count})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-[#12151C] border border-white/10 rounded-xl overflow-hidden max-h-[300px] overflow-y-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-white/10 text-xs text-zinc-400 bg-[#0B0D11]">
