@@ -16,7 +16,7 @@ import {
   YAxis,
 } from 'recharts';
 import {
-  AlertTriangle,
+  Calendar,
   ChevronLeft,
   ChevronRight,
   Maximize2,
@@ -24,22 +24,30 @@ import {
   Pause,
   Play,
   Presentation,
-  X,
 } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
 import { useData } from '../context/DataContext';
 import {
   computeDepartmentComparison,
-  computeMonthlyTrends,
+  computeMonthlyDetailedRows,
   computeOverviewMetrics,
+  computeYearlyDetailedRows,
 } from '../lib/analytics';
-import { formatPeriodLabel, getStatusColor } from '../lib/kpiMath';
+import { formatPeriodLabel, formatShortDate, getStatusColor, MONTH_NAMES } from '../lib/kpiMath';
 
 interface Slide {
   id: string;
+  label: string;
   title: string;
   subtitle: string;
-  kind: 'consolidated' | 'comparison' | 'distribution' | 'department' | 'critical';
+  kind:
+    | 'consolidated'
+    | 'monthly'
+    | 'yearly'
+    | 'comparison'
+    | 'distribution'
+    | 'department'
+    | 'critical';
   departmentId?: string;
 }
 
@@ -49,11 +57,17 @@ export function PresentationModeView() {
 
   const [selectedDeptIds, setSelectedDeptIds] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(0);
+  const [selectedMonth, setSelectedMonth] = useState<number>(0);
   const [includeConsolidated, setIncludeConsolidated] = useState(true);
+  const [includeMonthly, setIncludeMonthly] = useState(true);
+  const [includeYearly, setIncludeYearly] = useState(true);
   const [includeComparison, setIncludeComparison] = useState(true);
   const [includeDistribution, setIncludeDistribution] = useState(true);
   const [includeDeptSlides, setIncludeDeptSlides] = useState(true);
   const [includeCritical, setIncludeCritical] = useState(true);
+
+  const [focusedSlideMonth, setFocusedSlideMonth] = useState<number>(0);
+  const [focusedSlideYear, setFocusedSlideYear] = useState<number>(0);
 
   const [isPresenting, setIsPresenting] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
@@ -77,44 +91,87 @@ export function PresentationModeView() {
     return records.filter((r) => {
       if (selectedDeptIds.length > 0 && !selectedDeptIds.includes(r.departmentId)) return false;
       if (selectedYear !== 0 && r.reportingYear !== selectedYear) return false;
+      if (selectedMonth !== 0 && r.reportingMonth !== selectedMonth) return false;
       return true;
     });
-  }, [records, selectedDeptIds, selectedYear]);
+  }, [records, selectedDeptIds, selectedYear, selectedMonth]);
+
+  const yearScopedRecords = useMemo(() => {
+    return records.filter((r) => {
+      if (selectedDeptIds.length > 0 && !selectedDeptIds.includes(r.departmentId)) return false;
+      if (selectedMonth !== 0 && r.reportingMonth !== selectedMonth) return false;
+      return true;
+    });
+  }, [records, selectedDeptIds, selectedMonth]);
 
   const metrics = useMemo(() => computeOverviewMetrics(scopedRecords), [scopedRecords]);
   const deptComparison = useMemo(
     () => computeDepartmentComparison(scopedRecords, activeDepts),
     [scopedRecords, activeDepts]
   );
-  const monthlyTrends = useMemo(() => computeMonthlyTrends(scopedRecords), [scopedRecords]);
+  const monthlyDetailed = useMemo(
+    () => computeMonthlyDetailedRows(scopedRecords),
+    [scopedRecords]
+  );
+  const yearlyDetailed = useMemo(
+    () => computeYearlyDetailedRows(selectedYear === 0 ? yearScopedRecords : scopedRecords),
+    [yearScopedRecords, scopedRecords, selectedYear]
+  );
   const criticalRecords = useMemo(
     () => scopedRecords.filter((r) => r.status === 'Critical' || r.status === 'Needs Improvement'),
     [scopedRecords]
   );
+
+  const periodDescriptor = useMemo(() => {
+    const yrLabel = selectedYear === 0 ? 'All Reporting Years' : `FY ${selectedYear}`;
+    const moLabel = selectedMonth === 0 ? 'All Months' : MONTH_NAMES[selectedMonth - 1];
+    return `${yrLabel} · ${moLabel}`;
+  }, [selectedYear, selectedMonth]);
 
   const slides: Slide[] = useMemo(() => {
     const list: Slide[] = [];
     if (includeConsolidated) {
       list.push({
         id: 'consolidated',
+        label: 'Consolidated',
         title: 'Consolidated Company KPI Performance',
-        subtitle: `${settings.companyName} · ${selectedYear === 0 ? 'All Reporting Years' : `FY ${selectedYear}`}`,
+        subtitle: `${settings.companyName} · ${periodDescriptor}`,
         kind: 'consolidated',
+      });
+    }
+    if (includeMonthly) {
+      list.push({
+        id: 'monthly',
+        label: 'Monthly-Wise',
+        title: 'Monthly-Wise KPI Performance & Details',
+        subtitle: `Month-by-month KPI progression and detailed metrics · ${periodDescriptor}`,
+        kind: 'monthly',
+      });
+    }
+    if (includeYearly) {
+      list.push({
+        id: 'yearly',
+        label: 'Yearly-Wise',
+        title: 'Yearly-Wise KPI Performance & Details',
+        subtitle: `Annual KPI performance trajectory and comparative metrics`,
+        kind: 'yearly',
       });
     }
     if (includeComparison) {
       list.push({
         id: 'comparison',
+        label: 'Department-Wise',
         title: 'Department-Wise Performance & Target Comparison',
-        subtitle: 'Cross-departmental average achievement and target vs actual variance',
+        subtitle: `Cross-departmental achievement and target variance · ${periodDescriptor}`,
         kind: 'comparison',
       });
     }
     if (includeDistribution) {
       list.push({
         id: 'distribution',
-        title: 'Achievement Distribution & Improvement Trajectory',
-        subtitle: 'Status breakdown and monthly company progression',
+        label: 'Distribution',
+        title: 'Achievement Distribution & Trajectory',
+        subtitle: `Status classification split and monthly execution trend`,
         kind: 'distribution',
       });
     }
@@ -122,8 +179,9 @@ export function PresentationModeView() {
       activeDepts.forEach((d) => {
         list.push({
           id: `dept_${d.id}`,
+          label: d.code,
           title: d.name,
-          subtitle: `${d.code} · Departmental KPI Scorecard`,
+          subtitle: `${d.code} · Detailed Departmental KPI Scorecard · ${periodDescriptor}`,
           kind: 'department',
           departmentId: d.id,
         });
@@ -132,6 +190,7 @@ export function PresentationModeView() {
     if (includeCritical) {
       list.push({
         id: 'critical',
+        label: 'Critical',
         title: 'Critical & Underperforming KPI Highlights',
         subtitle: 'Priority operational gaps requiring executive intervention',
         kind: 'critical',
@@ -140,13 +199,15 @@ export function PresentationModeView() {
     return list;
   }, [
     includeConsolidated,
+    includeMonthly,
+    includeYearly,
     includeComparison,
     includeDistribution,
     includeDeptSlides,
     includeCritical,
     activeDepts,
     settings.companyName,
-    selectedYear,
+    periodDescriptor,
   ]);
 
   const currentSlide = slides[Math.min(slideIdx, Math.max(0, slides.length - 1))];
@@ -209,7 +270,7 @@ export function PresentationModeView() {
   const renderSlideBody = (slide: Slide) => {
     if (slide.kind === 'consolidated') {
       return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
           <div className="grid grid-cols-2 gap-5">
             <div className="bg-[#12151C] border border-[#FACC15]/25 rounded-2xl p-6">
               <div className="text-sm text-zinc-400">Overall Company Achievement</div>
@@ -261,26 +322,375 @@ export function PresentationModeView() {
       );
     }
 
+    if (slide.kind === 'monthly') {
+      const activeMonths = monthlyDetailed.filter((m) => m.count > 0);
+      const effectiveMonth =
+        focusedSlideMonth > 0
+          ? focusedSlideMonth
+          : selectedMonth > 0
+            ? selectedMonth
+            : activeMonths[activeMonths.length - 1]?.month || 0;
+
+      const monthRecords =
+        effectiveMonth > 0
+          ? scopedRecords.filter((r) => r.reportingMonth === effectiveMonth)
+          : scopedRecords;
+
+      return (
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-[#12151C] border border-white/10 rounded-xl p-5 h-[260px]">
+              <div className="text-sm font-semibold text-white mb-2 font-display">
+                Monthly Achievement Curve (Jan–Dec)
+              </div>
+              <ResponsiveContainer width="100%" height="86%">
+                <BarChart data={monthlyDetailed}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fill: '#E4E4E7', fontSize: 11 }} />
+                  <YAxis tick={{ fill: '#E4E4E7', fontSize: 11 }} unit="%" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#161920',
+                      borderColor: '#FACC15',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Bar dataKey="avgAchievement" name="Avg %" fill="#FACC15" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="bg-[#12151C] border border-white/10 rounded-xl overflow-hidden max-h-[260px] overflow-y-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/10 text-[11px] text-zinc-400 bg-[#0B0D11]">
+                    <th className="py-2.5 px-3">Month</th>
+                    <th className="py-2.5 px-3 text-right">KPIs</th>
+                    <th className="py-2.5 px-3 text-right">Depts</th>
+                    <th className="py-2.5 px-3 text-right">Avg %</th>
+                    <th className="py-2.5 px-3 text-right">Achieved</th>
+                    <th className="py-2.5 px-3 text-right">Critical</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/6 text-xs">
+                  {activeMonths.map((m) => (
+                    <tr
+                      key={m.month}
+                      onClick={() => setFocusedSlideMonth(m.month)}
+                      className={`cursor-pointer transition-colors ${
+                        effectiveMonth === m.month ? 'bg-[#FACC15]/10' : 'hover:bg-white/[0.03]'
+                      }`}
+                    >
+                      <td className="py-2 px-3 font-medium text-white">
+                        {MONTH_NAMES[m.month - 1]}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono-tabular text-zinc-300">{m.count}</td>
+                      <td className="py-2 px-3 text-right font-mono-tabular text-zinc-400">{m.departmentsCount}</td>
+                      <td className="py-2 px-3 text-right font-mono-tabular font-semibold text-[#FACC15]">
+                        {m.avgAchievement.toFixed(1)}%
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono-tabular text-emerald-400">{m.achievedCount}</td>
+                      <td className="py-2 px-3 text-right font-mono-tabular text-rose-400">{m.criticalCount}</td>
+                    </tr>
+                  ))}
+                  {activeMonths.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-6 text-center text-zinc-500">
+                        No monthly KPI submissions found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="bg-[#12151C] border border-white/10 rounded-xl overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-white/8 bg-[#0B0D11] flex items-center justify-between text-xs">
+              <span className="font-semibold text-white">
+                {effectiveMonth > 0
+                  ? `${MONTH_NAMES[effectiveMonth - 1]} KPI Details (${monthRecords.length})`
+                  : `All Monthly KPI Details (${monthRecords.length})`}
+              </span>
+              {activeMonths.length > 1 && (
+                <div className="flex items-center gap-1 overflow-x-auto">
+                  {activeMonths.map((m) => (
+                    <button
+                      key={m.month}
+                      type="button"
+                      onClick={() => setFocusedSlideMonth(m.month)}
+                      className={`px-2 py-0.5 rounded text-[11px] cursor-pointer whitespace-nowrap ${
+                        effectiveMonth === m.month
+                          ? 'bg-[#FACC15] text-black font-semibold'
+                          : 'text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="max-h-[210px] overflow-y-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/8 text-[11px] text-zinc-400">
+                    <th className="py-2 px-3">KPI Title & Details</th>
+                    <th className="py-2 px-3">Department</th>
+                    <th className="py-2 px-3 text-right">Target</th>
+                    <th className="py-2 px-3 text-right">Actual</th>
+                    <th className="py-2 px-3 text-right">Achievement</th>
+                    <th className="py-2 px-3">Status</th>
+                    <th className="py-2 px-3">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/6 text-xs">
+                  {monthRecords.map((r) => (
+                    <tr key={r.id}>
+                      <td className="py-2 px-3">
+                        <div className="font-medium text-white">{r.kpiTitle}</div>
+                        <div className="text-[11px] text-zinc-400">
+                          {r.categoryName}
+                          {r.isEmployeeSpecific && r.employeeName ? ` · Employee: ${r.employeeName}` : ''}
+                          {r.submittedByName ? ` · By ${r.submittedByName}` : ''}
+                        </div>
+                      </td>
+                      <td className="py-2 px-3 text-zinc-300">{r.departmentName}</td>
+                      <td className="py-2 px-3 text-right font-mono-tabular text-zinc-300">
+                        {r.targetValue.toLocaleString()} {r.unit}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono-tabular text-white">
+                        {r.actualValue.toLocaleString()} {r.unit}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono-tabular font-semibold text-[#FACC15]">
+                        {r.achievementPct.toFixed(1)}%
+                      </td>
+                      <td className={`py-2 px-3 font-semibold ${getStatusColor(r.status).text}`}>
+                        {r.status}
+                      </td>
+                      <td className="py-2 px-3 text-zinc-400 max-w-[200px] truncate">{r.remarks || '—'}</td>
+                    </tr>
+                  ))}
+                  {monthRecords.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="py-6 text-center text-zinc-500">
+                        No KPI records recorded for this month.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (slide.kind === 'yearly') {
+      const effectiveYear =
+        focusedSlideYear > 0
+          ? focusedSlideYear
+          : selectedYear > 0
+            ? selectedYear
+            : yearlyDetailed[yearlyDetailed.length - 1]?.year || 0;
+
+      const yearRecords =
+        effectiveYear > 0
+          ? (selectedYear === 0 ? yearScopedRecords : scopedRecords).filter(
+              (r) => r.reportingYear === effectiveYear
+            )
+          : scopedRecords;
+
+      return (
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-[#12151C] border border-white/10 rounded-xl p-5 h-[250px]">
+              <div className="text-sm font-semibold text-white mb-2 font-display">
+                Year-Over-Year KPI Performance
+              </div>
+              <ResponsiveContainer width="100%" height="86%">
+                <BarChart data={yearlyDetailed}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fill: '#E4E4E7', fontSize: 12 }} />
+                  <YAxis tick={{ fill: '#E4E4E7', fontSize: 12 }} unit="%" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#161920',
+                      borderColor: '#FACC15',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Bar dataKey="avgAchievement" name="Annual Avg %" fill="#D4AF37" radius={[6, 6, 0, 0]} maxBarSize={56} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="bg-[#12151C] border border-white/10 rounded-xl overflow-hidden max-h-[250px] overflow-y-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/10 text-[11px] text-zinc-400 bg-[#0B0D11]">
+                    <th className="py-2.5 px-3">Year</th>
+                    <th className="py-2.5 px-3 text-right">KPIs</th>
+                    <th className="py-2.5 px-3 text-right">Depts</th>
+                    <th className="py-2.5 px-3 text-right">Avg %</th>
+                    <th className="py-2.5 px-3 text-right">Achieved</th>
+                    <th className="py-2.5 px-3 text-right">Critical</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/6 text-xs">
+                  {yearlyDetailed.map((y) => (
+                    <tr
+                      key={y.year}
+                      onClick={() => setFocusedSlideYear(y.year)}
+                      className={`cursor-pointer transition-colors ${
+                        effectiveYear === y.year ? 'bg-[#FACC15]/10' : 'hover:bg-white/[0.03]'
+                      }`}
+                    >
+                      <td className="py-2.5 px-3 font-mono-tabular font-semibold text-white">FY {y.year}</td>
+                      <td className="py-2.5 px-3 text-right font-mono-tabular text-zinc-300">{y.count}</td>
+                      <td className="py-2.5 px-3 text-right font-mono-tabular text-zinc-400">{y.departmentsCount}</td>
+                      <td className="py-2.5 px-3 text-right font-mono-tabular font-semibold text-[#FACC15]">
+                        {y.avgAchievement.toFixed(1)}%
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono-tabular text-emerald-400">{y.achievedCount}</td>
+                      <td className="py-2.5 px-3 text-right font-mono-tabular text-rose-400">{y.criticalCount}</td>
+                    </tr>
+                  ))}
+                  {yearlyDetailed.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-6 text-center text-zinc-500">
+                        No yearly records available.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="bg-[#12151C] border border-white/10 rounded-xl overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-white/8 bg-[#0B0D11] flex items-center justify-between text-xs">
+              <span className="font-semibold text-white">
+                {effectiveYear > 0 ? `FY ${effectiveYear} KPI Details (${yearRecords.length})` : `Yearly KPI Details`}
+              </span>
+              {yearlyDetailed.length > 1 && (
+                <div className="flex items-center gap-1">
+                  {yearlyDetailed.map((y) => (
+                    <button
+                      key={y.year}
+                      type="button"
+                      onClick={() => setFocusedSlideYear(y.year)}
+                      className={`px-2 py-0.5 rounded text-[11px] cursor-pointer ${
+                        effectiveYear === y.year ? 'bg-[#FACC15] text-black font-semibold' : 'text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      {y.year}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="max-h-[210px] overflow-y-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/8 text-[11px] text-zinc-400">
+                    <th className="py-2 px-3">KPI Title & Details</th>
+                    <th className="py-2 px-3">Department</th>
+                    <th className="py-2 px-3">Period</th>
+                    <th className="py-2 px-3 text-right">Target</th>
+                    <th className="py-2 px-3 text-right">Actual</th>
+                    <th className="py-2 px-3 text-right">Achievement</th>
+                    <th className="py-2 px-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/6 text-xs">
+                  {yearRecords.map((r) => (
+                    <tr key={r.id}>
+                      <td className="py-2 px-3">
+                        <div className="font-medium text-white">{r.kpiTitle}</div>
+                        <div className="text-[11px] text-zinc-400">
+                          {r.categoryName}
+                          {r.isEmployeeSpecific && r.employeeName ? ` · Employee: ${r.employeeName}` : ''}
+                          {r.remarks ? ` · ${r.remarks}` : ''}
+                        </div>
+                      </td>
+                      <td className="py-2 px-3 text-zinc-300">{r.departmentName}</td>
+                      <td className="py-2 px-3 font-mono-tabular text-zinc-400">{formatPeriodLabel(r)}</td>
+                      <td className="py-2 px-3 text-right font-mono-tabular text-zinc-300">
+                        {r.targetValue.toLocaleString()} {r.unit}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono-tabular text-white">
+                        {r.actualValue.toLocaleString()} {r.unit}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono-tabular font-semibold text-[#FACC15]">
+                        {r.achievementPct.toFixed(1)}%
+                      </td>
+                      <td className={`py-2 px-3 font-semibold ${getStatusColor(r.status).text}`}>{r.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (slide.kind === 'comparison') {
       return (
-        <div className="bg-[#12151C] border border-white/10 rounded-2xl p-8 h-[420px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={deptComparison}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
-              <XAxis dataKey="departmentName" tick={{ fill: '#E4E4E7', fontSize: 12 }} />
-              <YAxis tick={{ fill: '#E4E4E7', fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#161920',
-                  borderColor: '#FACC15',
-                  borderRadius: '8px',
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: '13px' }} />
-              <Bar dataKey="targetTotal" name="Target Sum" fill="#52525B" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="actualTotal" name="Actual Achievement Sum" fill="#FACC15" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="space-y-5">
+          <div className="bg-[#12151C] border border-white/10 rounded-2xl p-6 h-[250px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={deptComparison}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
+                <XAxis dataKey="departmentName" tick={{ fill: '#E4E4E7', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#E4E4E7', fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#161920',
+                    borderColor: '#FACC15',
+                    borderRadius: '8px',
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
+                <Bar dataKey="targetTotal" name="Target Sum" fill="#52525B" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="actualTotal" name="Actual Achievement Sum" fill="#FACC15" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="bg-[#12151C] border border-white/10 rounded-xl overflow-hidden max-h-[210px] overflow-y-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-white/10 text-[11px] text-zinc-400 bg-[#0B0D11]">
+                  <th className="py-2.5 px-3">Department</th>
+                  <th className="py-2.5 px-3">Code</th>
+                  <th className="py-2.5 px-3 text-right">KPIs</th>
+                  <th className="py-2.5 px-3 text-right">Achieved</th>
+                  <th className="py-2.5 px-3 text-right">Nearly</th>
+                  <th className="py-2.5 px-3 text-right">Needs Imp.</th>
+                  <th className="py-2.5 px-3 text-right">Critical</th>
+                  <th className="py-2.5 px-3 text-right">Avg %</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/6 text-xs">
+                {deptComparison.map((d) => (
+                  <tr key={d.departmentId}>
+                    <td className="py-2.5 px-3 font-semibold text-white">{d.departmentName}</td>
+                    <td className="py-2.5 px-3 font-mono-tabular text-[#D4AF37]">{d.code}</td>
+                    <td className="py-2.5 px-3 text-right font-mono-tabular text-zinc-300">{d.count}</td>
+                    <td className="py-2.5 px-3 text-right font-mono-tabular text-emerald-400">{d.achievedCount}</td>
+                    <td className="py-2.5 px-3 text-right font-mono-tabular text-[#FACC15]">{d.nearlyCount}</td>
+                    <td className="py-2.5 px-3 text-right font-mono-tabular text-amber-400">{d.needsImprovementCount}</td>
+                    <td className="py-2.5 px-3 text-right font-mono-tabular text-rose-400">{d.criticalCount}</td>
+                    <td className="py-2.5 px-3 text-right font-mono-tabular font-bold text-[#FACC15]">
+                      {d.avgAchievement.toFixed(1)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       );
     }
@@ -317,12 +727,12 @@ export function PresentationModeView() {
               Monthly Performance Trajectory
             </div>
             <ResponsiveContainer width="100%" height="90%">
-              <LineChart data={monthlyTrends}>
+              <LineChart data={monthlyDetailed}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
                 <XAxis dataKey="label" tick={{ fill: '#E4E4E7', fontSize: 12 }} />
                 <YAxis tick={{ fill: '#E4E4E7', fontSize: 12 }} unit="%" />
                 <Tooltip />
-                <Line type="monotone" dataKey="avgAchievement" stroke="#FACC15" strokeWidth={3} dot={{ r: 4, fill: '#FACC15' }} />
+                <Line type="monotone" dataKey="avgAchievement" name="Avg %" stroke="#FACC15" strokeWidth={3} dot={{ r: 4, fill: '#FACC15' }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -334,8 +744,8 @@ export function PresentationModeView() {
       const dRecords = scopedRecords.filter((r) => r.departmentId === slide.departmentId);
       const dMetrics = computeOverviewMetrics(dRecords);
       return (
-        <div className="space-y-6">
-          <div className="grid grid-cols-4 gap-4">
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-[#12151C] border border-[#FACC15]/25 rounded-xl p-4">
               <div className="text-xs text-zinc-400">Avg Achievement</div>
               <div className="text-3xl font-bold text-[#FACC15] font-mono-tabular mt-1">
@@ -362,40 +772,58 @@ export function PresentationModeView() {
             </div>
           </div>
 
-          <div className="bg-[#12151C] border border-white/10 rounded-xl overflow-hidden max-h-[290px] overflow-y-auto">
+          <div className="bg-[#12151C] border border-white/10 rounded-xl overflow-hidden max-h-[340px] overflow-y-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-white/10 text-xs text-zinc-400 bg-[#0B0D11]">
-                  <th className="py-3 px-4">KPI Title</th>
+                  <th className="py-3 px-4">KPI Title & Details</th>
                   <th className="py-3 px-4">Period</th>
                   <th className="py-3 px-4 text-right">Target</th>
                   <th className="py-3 px-4 text-right">Actual</th>
                   <th className="py-3 px-4 text-right">Achievement</th>
                   <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Submitted By & Remarks</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/8 text-sm">
-                {dRecords.slice(0, 8).map((r) => (
+              <tbody className="divide-y divide-white/8 text-xs">
+                {dRecords.map((r) => (
                   <tr key={r.id}>
-                    <td className="py-3 px-4 font-medium text-white">{r.kpiTitle}</td>
-                    <td className="py-3 px-4 font-mono-tabular text-zinc-300">{formatPeriodLabel(r)}</td>
-                    <td className="py-3 px-4 text-right font-mono-tabular text-zinc-300">
+                    <td className="py-3 px-4 max-w-[280px]">
+                      <div className="font-semibold text-white">{r.kpiTitle}</div>
+                      <div className="text-[11px] text-zinc-400 mt-0.5">
+                        {r.categoryName}
+                        {r.isEmployeeSpecific && r.employeeName ? ` · Employee: ${r.employeeName}` : ''}
+                      </div>
+                      {r.kpiDescription && r.kpiDescription !== r.kpiTitle && (
+                        <div className="text-[11px] text-zinc-500 truncate mt-0.5">{r.kpiDescription}</div>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 font-mono-tabular text-zinc-300 whitespace-nowrap">
+                      {formatPeriodLabel(r)}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono-tabular text-zinc-300 whitespace-nowrap">
                       {r.targetValue.toLocaleString()} {r.unit}
                     </td>
-                    <td className="py-3 px-4 text-right font-mono-tabular text-white">
+                    <td className="py-3 px-4 text-right font-mono-tabular text-white whitespace-nowrap">
                       {r.actualValue.toLocaleString()} {r.unit}
                     </td>
-                    <td className="py-3 px-4 text-right font-mono-tabular font-bold text-[#FACC15]">
+                    <td className="py-3 px-4 text-right font-mono-tabular font-bold text-[#FACC15] whitespace-nowrap">
                       {r.achievementPct.toFixed(1)}%
                     </td>
-                    <td className={`py-3 px-4 font-semibold ${getStatusColor(r.status).text}`}>
+                    <td className={`py-3 px-4 font-semibold whitespace-nowrap ${getStatusColor(r.status).text}`}>
                       {r.status}
+                    </td>
+                    <td className="py-3 px-4 max-w-[220px]">
+                      <div className="text-zinc-300 truncate">
+                        {r.submittedByName || r.submittedByEmail} · {formatShortDate(r.submissionDate)}
+                      </div>
+                      <div className="text-[11px] text-zinc-400 truncate mt-0.5">{r.remarks || '—'}</div>
                     </td>
                   </tr>
                 ))}
                 {dRecords.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-zinc-500">
+                    <td colSpan={7} className="py-8 text-center text-zinc-500">
                       No KPI records submitted for this department in the selected period.
                     </td>
                   </tr>
@@ -408,7 +836,7 @@ export function PresentationModeView() {
     }
 
     return (
-      <div className="bg-[#12151C] border border-white/10 rounded-2xl overflow-hidden max-h-[400px] overflow-y-auto">
+      <div className="bg-[#12151C] border border-white/10 rounded-2xl overflow-hidden max-h-[420px] overflow-y-auto">
         {criticalRecords.length === 0 ? (
           <div className="p-12 text-center text-lg text-emerald-400 font-display">
             All evaluated KPIs are performing at or above 80% target threshold.
@@ -417,9 +845,10 @@ export function PresentationModeView() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-white/10 text-xs text-zinc-400 bg-[#0B0D11]">
-                <th className="py-3.5 px-4">KPI Title</th>
+                <th className="py-3.5 px-4">KPI Title & Employee</th>
                 <th className="py-3.5 px-4">Department</th>
                 <th className="py-3.5 px-4">Period</th>
+                <th className="py-3.5 px-4 text-right">Target / Actual</th>
                 <th className="py-3.5 px-4 text-right">Achievement</th>
                 <th className="py-3.5 px-4">Classification</th>
                 <th className="py-3.5 px-4">Remarks</th>
@@ -428,9 +857,18 @@ export function PresentationModeView() {
             <tbody className="divide-y divide-white/8 text-sm">
               {criticalRecords.map((r) => (
                 <tr key={r.id}>
-                  <td className="py-3.5 px-4 font-semibold text-white">{r.kpiTitle}</td>
+                  <td className="py-3.5 px-4">
+                    <div className="font-semibold text-white">{r.kpiTitle}</div>
+                    <div className="text-xs text-zinc-400">
+                      {r.categoryName}
+                      {r.isEmployeeSpecific && r.employeeName ? ` · Employee: ${r.employeeName}` : ''}
+                    </div>
+                  </td>
                   <td className="py-3.5 px-4 text-zinc-300">{r.departmentName}</td>
                   <td className="py-3.5 px-4 font-mono-tabular text-zinc-400">{formatPeriodLabel(r)}</td>
+                  <td className="py-3.5 px-4 text-right font-mono-tabular text-xs text-zinc-300">
+                    {r.actualValue.toLocaleString()} / {r.targetValue.toLocaleString()} {r.unit}
+                  </td>
                   <td className="py-3.5 px-4 text-right font-mono-tabular font-bold text-rose-400">
                     {r.achievementPct.toFixed(1)}%
                   </td>
@@ -456,7 +894,7 @@ export function PresentationModeView() {
             Meeting Presentation Mode
           </h1>
           <p className="text-sm text-zinc-400 mt-1">
-            Boardroom-grade full-screen slideshow generated automatically from live KPI data
+            Boardroom-grade slideshow featuring monthly-wise, yearly-wise, and department-wise KPI details
           </p>
         </div>
 
@@ -465,7 +903,7 @@ export function PresentationModeView() {
             type="button"
             disabled={slides.length === 0 || scopedRecords.length === 0}
             onClick={() => enterPresentation(false)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#161920] hover:bg-zinc-800 border border-white/10 text-sm font-medium text-white disabled:opacity-40 cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#161920] hover:bg-zinc-800 border border-white/10 text-sm font-medium text-white disabled:opacity-40 cursor-pointer whitespace-nowrap shrink-0"
           >
             <Maximize2 className="w-4 h-4 text-[#FACC15]" />
             Launch Full-Screen Deck
@@ -474,7 +912,7 @@ export function PresentationModeView() {
             type="button"
             disabled={slides.length === 0 || scopedRecords.length === 0}
             onClick={() => enterPresentation(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-sm font-semibold disabled:opacity-40 cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-sm font-semibold disabled:opacity-40 cursor-pointer whitespace-nowrap shrink-0"
           >
             <Play className="w-4 h-4" />
             Auto-Play Meeting Slides
@@ -484,20 +922,46 @@ export function PresentationModeView() {
 
       {/* Slide Deck Configuration */}
       <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="space-y-2.5">
-          <div className="text-xs font-medium text-[#D4AF37]">Reporting Year & Departments</div>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100"
-          >
-            <option value={0}>All Reporting Years</option>
-            {availableYears.map((y) => (
-              <option key={y} value={y}>
-                FY {y}
-              </option>
-            ))}
-          </select>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-xs font-medium text-[#D4AF37]">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Reporting Year, Month & Departments</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              aria-label="Filter presentation year"
+              value={selectedYear}
+              onChange={(e) => {
+                setSelectedYear(Number(e.target.value));
+                setFocusedSlideYear(0);
+              }}
+              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+            >
+              <option value={0}>All Years</option>
+              {availableYears.map((y) => (
+                <option key={y} value={y}>
+                  FY {y}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Filter presentation month"
+              value={selectedMonth}
+              onChange={(e) => {
+                setSelectedMonth(Number(e.target.value));
+                setFocusedSlideMonth(0);
+              }}
+              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+            >
+              <option value={0}>All Months</option>
+              {MONTH_NAMES.map((m, idx) => (
+                <option key={m} value={idx + 1}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex flex-wrap gap-1.5 pt-1">
             <button
               type="button"
@@ -530,6 +994,8 @@ export function PresentationModeView() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
             {[
               { label: 'Consolidated Overview', checked: includeConsolidated, set: setIncludeConsolidated },
+              { label: 'Monthly-Wise KPI Details', checked: includeMonthly, set: setIncludeMonthly },
+              { label: 'Yearly-Wise KPI Details', checked: includeYearly, set: setIncludeYearly },
               { label: 'Department Comparison', checked: includeComparison, set: setIncludeComparison },
               { label: 'Distribution & Trends', checked: includeDistribution, set: setIncludeDistribution },
               { label: 'Individual Dept Slides', checked: includeDeptSlides, set: setIncludeDeptSlides },
@@ -558,11 +1024,29 @@ export function PresentationModeView() {
           <Presentation className="w-10 h-10 text-[#FACC15] mx-auto" />
           <h2 className="text-lg font-bold text-white font-display">No KPI Data for Presentation</h2>
           <p className="text-sm text-zinc-400">
-            Submit KPI records or adjust your selected year/department filters to generate presentation slides.
+            Submit KPI records or adjust your selected year, month, or department filters to generate presentation slides.
           </p>
         </div>
       ) : (
         <div className="bg-[#0B0D11] border border-white/10 rounded-xl p-6 space-y-6">
+          {/* Quick Slide Switcher Strip */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-white/8">
+            {slides.map((s, idx) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSlideIdx(idx)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                  slideIdx === idx
+                    ? 'bg-[#FACC15] text-black font-semibold'
+                    : 'bg-[#161920] text-zinc-300 hover:text-white'
+                }`}
+              >
+                {idx + 1}. {s.label}
+              </button>
+            ))}
+          </div>
+
           <div className="flex items-center justify-between border-b border-white/8 pb-4">
             <div>
               <div className="text-xs text-[#FACC15] font-mono-tabular">
@@ -576,6 +1060,7 @@ export function PresentationModeView() {
                 type="button"
                 onClick={() => setSlideIdx((p) => (p - 1 + slides.length) % slides.length)}
                 className="p-2 rounded-lg bg-[#161920] hover:bg-zinc-800 text-zinc-200 cursor-pointer"
+                aria-label="Previous slide"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -583,6 +1068,7 @@ export function PresentationModeView() {
                 type="button"
                 onClick={() => setSlideIdx((p) => (p + 1) % slides.length)}
                 className="p-2 rounded-lg bg-[#161920] hover:bg-zinc-800 text-zinc-200 cursor-pointer"
+                aria-label="Next slide"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

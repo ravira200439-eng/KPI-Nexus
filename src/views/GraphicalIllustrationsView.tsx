@@ -18,16 +18,19 @@ import {
 } from 'recharts';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
-import { Download, FileImage, Trophy } from 'lucide-react';
+import { Download, ExternalLink, FileImage, Trophy } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import {
-  computeAnnualTrends,
   computeCategoryBreakdown,
   computeDepartmentComparison,
-  computeMonthlyTrends,
+  computeMonthlyDetailedRows,
   computeOverviewMetrics,
   computeQuarterlyTrends,
+  computeYearlyDetailedRows,
 } from '../lib/analytics';
+import { formatPeriodLabel, formatShortDate, getStatusColor, MONTH_NAMES } from '../lib/kpiMath';
+
+type BreakdownTab = 'department' | 'monthly' | 'yearly' | 'all_details';
 
 export function GraphicalIllustrationsView() {
   const { departments, records, settings } = useData();
@@ -35,9 +38,14 @@ export function GraphicalIllustrationsView() {
 
   const [selectedDeptIds, setSelectedDeptIds] = useState<string[]>([]);
   const [yearFilter, setYearFilter] = useState<number>(0);
+  const [monthFilter, setMonthFilter] = useState<number>(0);
   const [periodFilter, setPeriodFilter] = useState<string>('all');
   const [monthlyChartType, setMonthlyChartType] = useState<'line' | 'area'>('line');
   const [distChartType, setDistChartType] = useState<'donut' | 'pie'>('donut');
+  const [breakdownTab, setBreakdownTab] = useState<BreakdownTab>('department');
+  const [focusedDeptId, setFocusedDeptId] = useState<string>('all');
+  const [focusedMonth, setFocusedMonth] = useState<number>(0);
+  const [focusedYear, setFocusedYear] = useState<number>(0);
   const [exporting, setExporting] = useState<'png' | 'pdf' | null>(null);
 
   const availableYears = useMemo(() => {
@@ -56,10 +64,11 @@ export function GraphicalIllustrationsView() {
     return records.filter((r) => {
       if (selectedDeptIds.length > 0 && !selectedDeptIds.includes(r.departmentId)) return false;
       if (yearFilter !== 0 && r.reportingYear !== yearFilter) return false;
+      if (monthFilter !== 0 && r.reportingMonth !== monthFilter) return false;
       if (periodFilter !== 'all' && r.reportingPeriod !== periodFilter) return false;
       return true;
     });
-  }, [records, selectedDeptIds, yearFilter, periodFilter]);
+  }, [records, selectedDeptIds, yearFilter, monthFilter, periodFilter]);
 
   const metrics = useMemo(() => computeOverviewMetrics(filteredRecords), [filteredRecords]);
   const deptComparison = useMemo(
@@ -72,9 +81,9 @@ export function GraphicalIllustrationsView() {
       ),
     [filteredRecords, departments, selectedDeptIds]
   );
-  const monthlyTrends = useMemo(() => computeMonthlyTrends(filteredRecords), [filteredRecords]);
+  const monthlyDetailed = useMemo(() => computeMonthlyDetailedRows(filteredRecords), [filteredRecords]);
   const quarterlyTrends = useMemo(() => computeQuarterlyTrends(filteredRecords), [filteredRecords]);
-  const annualTrends = useMemo(() => computeAnnualTrends(filteredRecords), [filteredRecords]);
+  const yearlyDetailed = useMemo(() => computeYearlyDetailedRows(filteredRecords), [filteredRecords]);
   const categoryBreakdown = useMemo(() => computeCategoryBreakdown(filteredRecords), [filteredRecords]);
 
   // Chart 6: Achievement distribution
@@ -91,7 +100,7 @@ export function GraphicalIllustrationsView() {
 
   // Chart 10: Historical performance improvement (month-over-month delta)
   const improvementData = useMemo(() => {
-    const activeMonths = monthlyTrends.filter((m) => m.count > 0);
+    const activeMonths = monthlyDetailed.filter((m) => m.count > 0);
     return activeMonths.map((m, i) => {
       const prev = i > 0 ? activeMonths[i - 1].avgAchievement : m.avgAchievement;
       const delta = i > 0 ? Math.round((m.avgAchievement - prev) * 10) / 10 : 0;
@@ -101,7 +110,20 @@ export function GraphicalIllustrationsView() {
         delta,
       };
     });
-  }, [monthlyTrends]);
+  }, [monthlyDetailed]);
+
+  const detailRecords = useMemo(() => {
+    if (breakdownTab === 'department' && focusedDeptId !== 'all') {
+      return filteredRecords.filter((r) => r.departmentId === focusedDeptId);
+    }
+    if (breakdownTab === 'monthly' && focusedMonth > 0) {
+      return filteredRecords.filter((r) => r.reportingMonth === focusedMonth);
+    }
+    if (breakdownTab === 'yearly' && focusedYear > 0) {
+      return filteredRecords.filter((r) => r.reportingYear === focusedYear);
+    }
+    return filteredRecords;
+  }, [filteredRecords, breakdownTab, focusedDeptId, focusedMonth, focusedYear]);
 
   const handleExportPng = async () => {
     if (!exportContainerRef.current) return;
@@ -168,7 +190,7 @@ export function GraphicalIllustrationsView() {
             Graphical Illustrations
           </h1>
           <p className="text-sm text-zinc-400 mt-1">
-            Comprehensive 10-view interactive visual analytics suite powered exclusively by live Firestore KPI records
+            Interactive analytics suite with monthly-wise, yearly-wise, and department-wise KPI breakdowns
           </p>
         </div>
 
@@ -177,7 +199,7 @@ export function GraphicalIllustrationsView() {
             type="button"
             disabled={Boolean(exporting) || filteredRecords.length === 0}
             onClick={handleExportPng}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#161920] hover:bg-zinc-800 border border-white/10 text-xs font-medium text-zinc-100 disabled:opacity-40 cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#161920] hover:bg-zinc-800 border border-white/10 text-xs font-medium text-zinc-100 disabled:opacity-40 cursor-pointer whitespace-nowrap shrink-0"
           >
             <FileImage className="w-4 h-4 text-[#FACC15]" />
             {exporting === 'png' ? 'Exporting PNG...' : 'Export PNG'}
@@ -186,7 +208,7 @@ export function GraphicalIllustrationsView() {
             type="button"
             disabled={Boolean(exporting) || filteredRecords.length === 0}
             onClick={handleExportPdf}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-xs font-semibold disabled:opacity-40 cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-xs font-semibold disabled:opacity-40 cursor-pointer whitespace-nowrap shrink-0"
           >
             <Download className="w-4 h-4" />
             {exporting === 'pdf' ? 'Exporting PDF...' : 'Export PDF'}
@@ -200,7 +222,7 @@ export function GraphicalIllustrationsView() {
           <div className="text-xs font-medium text-[#D4AF37]">
             Compare Departments ({selectedDeptIds.length === 0 ? 'All Selected' : `${selectedDeptIds.length} Selected`})
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <select
               aria-label="Filter year"
               value={yearFilter}
@@ -210,7 +232,20 @@ export function GraphicalIllustrationsView() {
               <option value={0}>All Years</option>
               {availableYears.map((y) => (
                 <option key={y} value={y}>
-                  {y}
+                  FY {y}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Filter month"
+              value={monthFilter}
+              onChange={(e) => setMonthFilter(Number(e.target.value))}
+              className="bg-[#161920] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+            >
+              <option value={0}>All Months</option>
+              {MONTH_NAMES.map((m, idx) => (
+                <option key={m} value={idx + 1}>
+                  {m}
                 </option>
               ))}
             </select>
@@ -264,7 +299,7 @@ export function GraphicalIllustrationsView() {
         <div className="bg-[#0F1115] border border-white/8 rounded-xl p-12 text-center space-y-2">
           <h2 className="text-lg font-bold text-white font-display">No Analytical Data Available</h2>
           <p className="text-sm text-zinc-400">
-            Submit KPI records or adjust your selected department and period filters to render all 10 analytical visualizations.
+            Submit KPI records or adjust your selected department, month, and year filters to render visualizations and breakdowns.
           </p>
         </div>
       ) : (
@@ -292,7 +327,6 @@ export function GraphicalIllustrationsView() {
                       <stop offset="100%" stopColor="#10B981" />
                     </linearGradient>
                   </defs>
-                  {/* Track */}
                   <path
                     d="M 24 118 A 96 96 0 0 1 216 118"
                     fill="none"
@@ -300,7 +334,6 @@ export function GraphicalIllustrationsView() {
                     strokeWidth="18"
                     strokeLinecap="round"
                   />
-                  {/* Active Arc */}
                   <path
                     d="M 24 118 A 96 96 0 0 1 216 118"
                     fill="none"
@@ -310,7 +343,6 @@ export function GraphicalIllustrationsView() {
                     strokeDasharray="301.6"
                     strokeDashoffset={301.6 - (Math.min(100, gaugePct) / 100) * 301.6}
                   />
-                  {/* Needle */}
                   <g transform={`translate(120, 118) rotate(${gaugeAngle})`}>
                     <polygon points="-3,0 0,-78 3,0" fill="#FACC15" />
                     <circle cx="0" cy="0" r="7" fill="#D4AF37" stroke="#08090B" strokeWidth="2" />
@@ -440,7 +472,7 @@ export function GraphicalIllustrationsView() {
               <div className="h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   {monthlyChartType === 'line' ? (
-                    <LineChart data={monthlyTrends}>
+                    <LineChart data={monthlyDetailed}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                       <XAxis dataKey="label" tick={{ fill: '#A1A1AA', fontSize: 11 }} />
                       <YAxis tick={{ fill: '#A1A1AA', fontSize: 11 }} unit="%" />
@@ -462,7 +494,7 @@ export function GraphicalIllustrationsView() {
                       />
                     </LineChart>
                   ) : (
-                    <AreaChart data={monthlyTrends}>
+                    <AreaChart data={monthlyDetailed}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                       <XAxis dataKey="label" tick={{ fill: '#A1A1AA', fontSize: 11 }} />
                       <YAxis tick={{ fill: '#A1A1AA', fontSize: 11 }} unit="%" />
@@ -530,7 +562,7 @@ export function GraphicalIllustrationsView() {
               </p>
               <div className="h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={annualTrends}>
+                  <LineChart data={yearlyDetailed}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                     <XAxis dataKey="label" tick={{ fill: '#A1A1AA', fontSize: 11 }} />
                     <YAxis tick={{ fill: '#A1A1AA', fontSize: 11 }} unit="%" />
@@ -682,6 +714,344 @@ export function GraphicalIllustrationsView() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+            </div>
+          </div>
+
+          {/* Row 5: Interactive Monthly-Wise, Yearly-Wise & Department-Wise Breakdowns + KPI Details */}
+          <div className="bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-white/8 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-white font-display">
+                  Monthly-Wise, Yearly-Wise & Department-Wise KPI Details
+                </h2>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Click any department, month, or year row to drill into individual KPI metrics and remarks
+                </p>
+              </div>
+              <div className="flex items-center gap-1 p-1 bg-[#161920] rounded-lg border border-white/8 overflow-x-auto">
+                {(
+                  [
+                    { id: 'department', label: 'Department-Wise' },
+                    { id: 'monthly', label: 'Monthly-Wise' },
+                    { id: 'yearly', label: 'Yearly-Wise' },
+                    { id: 'all_details', label: 'All KPI Details' },
+                  ] as const
+                ).map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setBreakdownTab(tab.id)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                      breakdownTab === tab.id
+                        ? 'bg-[#FACC15] text-black font-semibold'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Summary Breakdown Matrix */}
+            {breakdownTab === 'department' && (
+              <div className="overflow-x-auto border-b border-white/8">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/8 text-[11px] text-zinc-400 bg-[#0B0D11]">
+                      <th className="py-3 px-4">Department (Click to Filter Details)</th>
+                      <th className="py-3 px-4">Code</th>
+                      <th className="py-3 px-4 text-right">KPIs</th>
+                      <th className="py-3 px-4 text-right">Target Total</th>
+                      <th className="py-3 px-4 text-right">Actual Total</th>
+                      <th className="py-3 px-4 text-right">Achieved</th>
+                      <th className="py-3 px-4 text-right">Nearly</th>
+                      <th className="py-3 px-4 text-right">Needs Imp.</th>
+                      <th className="py-3 px-4 text-right">Critical</th>
+                      <th className="py-3 px-4 text-right">Avg Achievement</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/6 text-xs">
+                    <tr
+                      onClick={() => setFocusedDeptId('all')}
+                      className={`cursor-pointer transition-colors ${
+                        focusedDeptId === 'all' ? 'bg-[#FACC15]/10' : 'hover:bg-white/[0.02]'
+                      }`}
+                    >
+                      <td className="py-2.5 px-4 font-semibold text-[#FACC15]">All Filtered Departments</td>
+                      <td className="py-2.5 px-4 font-mono-tabular text-zinc-400">ALL</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-200">{metrics.totalKpis}</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-300">
+                        {metrics.totalTargetSum.toLocaleString()}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-100">
+                        {metrics.totalActualSum.toLocaleString()}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-emerald-400">{metrics.achievedCount}</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-[#FACC15]">{metrics.nearlyCount}</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-amber-400">{metrics.needsImprovementCount}</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-rose-400">{metrics.criticalCount}</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular font-bold text-[#FACC15]">
+                        {metrics.avgAchievement.toFixed(1)}%
+                      </td>
+                    </tr>
+                    {deptComparison.map((d) => (
+                      <tr
+                        key={d.departmentId}
+                        onClick={() => setFocusedDeptId(d.departmentId)}
+                        className={`cursor-pointer transition-colors ${
+                          focusedDeptId === d.departmentId ? 'bg-[#FACC15]/10' : 'hover:bg-white/[0.02]'
+                        }`}
+                      >
+                        <td className="py-2.5 px-4 font-medium text-white">{d.departmentName}</td>
+                        <td className="py-2.5 px-4 font-mono-tabular text-[#D4AF37]">{d.code}</td>
+                        <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-200">{d.count}</td>
+                        <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-300">
+                          {d.targetTotal.toLocaleString()}
+                        </td>
+                        <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-100">
+                          {d.actualTotal.toLocaleString()}
+                        </td>
+                        <td className="py-2.5 px-4 text-right font-mono-tabular text-emerald-400">{d.achievedCount}</td>
+                        <td className="py-2.5 px-4 text-right font-mono-tabular text-[#FACC15]">{d.nearlyCount}</td>
+                        <td className="py-2.5 px-4 text-right font-mono-tabular text-amber-400">{d.needsImprovementCount}</td>
+                        <td className="py-2.5 px-4 text-right font-mono-tabular text-rose-400">{d.criticalCount}</td>
+                        <td className="py-2.5 px-4 text-right font-mono-tabular font-bold text-[#FACC15]">
+                          {d.avgAchievement.toFixed(1)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {breakdownTab === 'monthly' && (
+              <div className="overflow-x-auto border-b border-white/8">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/8 text-[11px] text-zinc-400 bg-[#0B0D11]">
+                      <th className="py-3 px-4">Month (Click to Filter Details)</th>
+                      <th className="py-3 px-4 text-right">KPIs</th>
+                      <th className="py-3 px-4 text-right">Depts Covered</th>
+                      <th className="py-3 px-4 text-right">Target Sum</th>
+                      <th className="py-3 px-4 text-right">Actual Sum</th>
+                      <th className="py-3 px-4 text-right">Achieved</th>
+                      <th className="py-3 px-4 text-right">Critical</th>
+                      <th className="py-3 px-4 text-right">Avg Achievement</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/6 text-xs">
+                    <tr
+                      onClick={() => setFocusedMonth(0)}
+                      className={`cursor-pointer transition-colors ${
+                        focusedMonth === 0 ? 'bg-[#FACC15]/10' : 'hover:bg-white/[0.02]'
+                      }`}
+                    >
+                      <td className="py-2.5 px-4 font-semibold text-[#FACC15]">All Months Combined</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-200">{metrics.totalKpis}</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-400">—</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-300">
+                        {metrics.totalTargetSum.toLocaleString()}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-100">
+                        {metrics.totalActualSum.toLocaleString()}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-emerald-400">{metrics.achievedCount}</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-rose-400">{metrics.criticalCount}</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular font-bold text-[#FACC15]">
+                        {metrics.avgAchievement.toFixed(1)}%
+                      </td>
+                    </tr>
+                    {monthlyDetailed
+                      .filter((m) => m.count > 0)
+                      .map((m) => (
+                        <tr
+                          key={m.month}
+                          onClick={() => setFocusedMonth(m.month)}
+                          className={`cursor-pointer transition-colors ${
+                            focusedMonth === m.month ? 'bg-[#FACC15]/10' : 'hover:bg-white/[0.02]'
+                          }`}
+                        >
+                          <td className="py-2.5 px-4 font-medium text-white">{MONTH_NAMES[m.month - 1]}</td>
+                          <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-200">{m.count}</td>
+                          <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-400">{m.departmentsCount}</td>
+                          <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-300">
+                            {m.targetSum.toLocaleString()}
+                          </td>
+                          <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-100">
+                            {m.actualSum.toLocaleString()}
+                          </td>
+                          <td className="py-2.5 px-4 text-right font-mono-tabular text-emerald-400">{m.achievedCount}</td>
+                          <td className="py-2.5 px-4 text-right font-mono-tabular text-rose-400">{m.criticalCount}</td>
+                          <td className="py-2.5 px-4 text-right font-mono-tabular font-bold text-[#FACC15]">
+                            {m.avgAchievement.toFixed(1)}%
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {breakdownTab === 'yearly' && (
+              <div className="overflow-x-auto border-b border-white/8">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/8 text-[11px] text-zinc-400 bg-[#0B0D11]">
+                      <th className="py-3 px-4">Fiscal Year (Click to Filter Details)</th>
+                      <th className="py-3 px-4 text-right">KPIs</th>
+                      <th className="py-3 px-4 text-right">Depts Covered</th>
+                      <th className="py-3 px-4 text-right">Target Sum</th>
+                      <th className="py-3 px-4 text-right">Actual Sum</th>
+                      <th className="py-3 px-4 text-right">Achieved</th>
+                      <th className="py-3 px-4 text-right">Critical</th>
+                      <th className="py-3 px-4 text-right">Avg Achievement</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/6 text-xs">
+                    <tr
+                      onClick={() => setFocusedYear(0)}
+                      className={`cursor-pointer transition-colors ${
+                        focusedYear === 0 ? 'bg-[#FACC15]/10' : 'hover:bg-white/[0.02]'
+                      }`}
+                    >
+                      <td className="py-2.5 px-4 font-semibold text-[#FACC15]">All Filtered Years</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-200">{metrics.totalKpis}</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-400">—</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-300">
+                        {metrics.totalTargetSum.toLocaleString()}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-100">
+                        {metrics.totalActualSum.toLocaleString()}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-emerald-400">{metrics.achievedCount}</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular text-rose-400">{metrics.criticalCount}</td>
+                      <td className="py-2.5 px-4 text-right font-mono-tabular font-bold text-[#FACC15]">
+                        {metrics.avgAchievement.toFixed(1)}%
+                      </td>
+                    </tr>
+                    {yearlyDetailed.map((y) => (
+                      <tr
+                        key={y.year}
+                        onClick={() => setFocusedYear(y.year)}
+                        className={`cursor-pointer transition-colors ${
+                          focusedYear === y.year ? 'bg-[#FACC15]/10' : 'hover:bg-white/[0.02]'
+                        }`}
+                      >
+                        <td className="py-2.5 px-4 font-mono-tabular font-medium text-white">FY {y.year}</td>
+                        <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-200">{y.count}</td>
+                        <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-400">{y.departmentsCount}</td>
+                        <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-300">
+                          {y.targetSum.toLocaleString()}
+                        </td>
+                        <td className="py-2.5 px-4 text-right font-mono-tabular text-zinc-100">
+                          {y.actualSum.toLocaleString()}
+                        </td>
+                        <td className="py-2.5 px-4 text-right font-mono-tabular text-emerald-400">{y.achievedCount}</td>
+                        <td className="py-2.5 px-4 text-right font-mono-tabular text-rose-400">{y.criticalCount}</td>
+                        <td className="py-2.5 px-4 text-right font-mono-tabular font-bold text-[#FACC15]">
+                          {y.avgAchievement.toFixed(1)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Full Detailed KPI Records Table */}
+            <div className="px-5 py-3 bg-[#0B0D11] border-b border-white/8 flex items-center justify-between text-xs">
+              <span className="font-semibold text-zinc-200">
+                KPI Records & Relevant Details ({detailRecords.length})
+              </span>
+              <span className="text-zinc-400">
+                {breakdownTab === 'department' && focusedDeptId !== 'all'
+                  ? `Filtered to ${departments.find((d) => d.id === focusedDeptId)?.name || 'Selected Department'}`
+                  : breakdownTab === 'monthly' && focusedMonth > 0
+                    ? `Filtered to ${MONTH_NAMES[focusedMonth - 1]}`
+                    : breakdownTab === 'yearly' && focusedYear > 0
+                      ? `Filtered to FY ${focusedYear}`
+                      : 'Showing all matching KPI submissions'}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/8 text-[11px] text-zinc-400 bg-[#0B0D11]">
+                    <th className="py-2.5 px-4">KPI Title & Description</th>
+                    <th className="py-2.5 px-4">Department</th>
+                    <th className="py-2.5 px-4">Period</th>
+                    <th className="py-2.5 px-4 text-right">Target</th>
+                    <th className="py-2.5 px-4 text-right">Actual</th>
+                    <th className="py-2.5 px-4 text-right">Achievement</th>
+                    <th className="py-2.5 px-4">Status</th>
+                    <th className="py-2.5 px-4">Submitted By & Remarks</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/6 text-xs">
+                  {detailRecords.map((r) => {
+                    const st = getStatusColor(r.status);
+                    return (
+                      <tr key={r.id} className="hover:bg-white/[0.02]">
+                        <td className="py-3 px-4 max-w-[280px]">
+                          <div className="font-semibold text-white">{r.kpiTitle}</div>
+                          <div className="text-[11px] text-[#D4AF37] mt-0.5">
+                            {r.categoryName}
+                            {r.isEmployeeSpecific && r.employeeName ? ` · Employee: ${r.employeeName}` : ''}
+                          </div>
+                          {r.kpiDescription && r.kpiDescription !== r.kpiTitle && (
+                            <div className="text-[11px] text-zinc-400 truncate mt-0.5">
+                              {r.kpiDescription}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-zinc-200 whitespace-nowrap">{r.departmentName}</td>
+                        <td className="py-3 px-4 font-mono-tabular text-zinc-300 whitespace-nowrap">
+                          {r.reportingPeriod} · {formatPeriodLabel(r)}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono-tabular text-zinc-300 whitespace-nowrap">
+                          {r.targetValue.toLocaleString()} {r.unit}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono-tabular text-white whitespace-nowrap">
+                          {r.actualValue.toLocaleString()} {r.unit}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono-tabular font-semibold text-[#FACC15] whitespace-nowrap">
+                          {r.achievementPct.toFixed(1)}%
+                        </td>
+                        <td className={`py-3 px-4 font-medium whitespace-nowrap ${st.text}`}>{r.status}</td>
+                        <td className="py-3 px-4 max-w-[240px]">
+                          <div className="text-zinc-300 truncate">
+                            {r.submittedByName || r.submittedByEmail} · {formatShortDate(r.submissionDate)}
+                          </div>
+                          <div className="text-[11px] text-zinc-400 truncate mt-0.5">
+                            {r.remarks || '—'}
+                          </div>
+                          {r.evidenceUrl && (
+                            <a
+                              href={r.evidenceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] text-[#FACC15] hover:underline mt-0.5"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              {r.evidenceName || 'Evidence'}
+                            </a>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {detailRecords.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-zinc-500">
+                        No KPI records match the selected breakdown filter.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

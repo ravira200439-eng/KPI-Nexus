@@ -77,6 +77,8 @@ export interface DepartmentComparisonRow {
   count: number;
   avgAchievement: number;
   achievedCount: number;
+  nearlyCount: number;
+  needsImprovementCount: number;
   criticalCount: number;
   targetTotal: number;
   actualTotal: number;
@@ -94,6 +96,8 @@ export function computeDepartmentComparison(
       count: number;
       pctSum: number;
       achievedCount: number;
+      nearlyCount: number;
+      needsImprovementCount: number;
       criticalCount: number;
       targetTotal: number;
       actualTotal: number;
@@ -107,6 +111,8 @@ export function computeDepartmentComparison(
       count: 0,
       pctSum: 0,
       achievedCount: 0,
+      nearlyCount: 0,
+      needsImprovementCount: 0,
       criticalCount: 0,
       targetTotal: 0,
       actualTotal: 0,
@@ -120,6 +126,8 @@ export function computeDepartmentComparison(
       count: 0,
       pctSum: 0,
       achievedCount: 0,
+      nearlyCount: 0,
+      needsImprovementCount: 0,
       criticalCount: 0,
       targetTotal: 0,
       actualTotal: 0,
@@ -129,7 +137,9 @@ export function computeDepartmentComparison(
     cur.targetTotal += r.targetValue;
     cur.actualTotal += r.actualValue;
     if (r.status === 'Target Achieved') cur.achievedCount += 1;
-    if (r.status === 'Critical') cur.criticalCount += 1;
+    else if (r.status === 'Nearly Achieved') cur.nearlyCount += 1;
+    else if (r.status === 'Needs Improvement') cur.needsImprovementCount += 1;
+    else if (r.status === 'Critical') cur.criticalCount += 1;
     map.set(r.departmentId, cur);
   }
 
@@ -141,6 +151,8 @@ export function computeDepartmentComparison(
       count: v.count,
       avgAchievement: v.count > 0 ? Math.round((v.pctSum / v.count) * 100) / 100 : 0,
       achievedCount: v.achievedCount,
+      nearlyCount: v.nearlyCount,
+      needsImprovementCount: v.needsImprovementCount,
       criticalCount: v.criticalCount,
       targetTotal: Math.round(v.targetTotal * 100) / 100,
       actualTotal: Math.round(v.actualTotal * 100) / 100,
@@ -148,14 +160,43 @@ export function computeDepartmentComparison(
     .sort((a, b) => b.avgAchievement - a.avgAchievement);
 }
 
+export interface MonthlyDetailedRow {
+  month: number;
+  label: string;
+  count: number;
+  avgAchievement: number;
+  achievedCount: number;
+  nearlyCount: number;
+  needsImprovementCount: number;
+  criticalCount: number;
+  targetSum: number;
+  actualSum: number;
+  departmentsCount: number;
+}
+
 export function computeMonthlyTrends(records: KpiRecord[]) {
+  return computeMonthlyDetailedRows(records).map((b) => ({
+    label: b.label,
+    count: b.count,
+    avgAchievement: b.avgAchievement,
+    targetSum: b.targetSum,
+    actualSum: b.actualSum,
+  }));
+}
+
+export function computeMonthlyDetailedRows(records: KpiRecord[]): MonthlyDetailedRow[] {
   const buckets = MONTH_SHORT.map((label, idx) => ({
     month: idx + 1,
     label,
     count: 0,
     pctSum: 0,
+    achievedCount: 0,
+    nearlyCount: 0,
+    needsImprovementCount: 0,
+    criticalCount: 0,
     targetSum: 0,
     actualSum: 0,
+    deptIds: new Set<string>(),
   }));
 
   for (const r of records) {
@@ -165,15 +206,26 @@ export function computeMonthlyTrends(records: KpiRecord[]) {
       b.pctSum += r.achievementPct;
       b.targetSum += r.targetValue;
       b.actualSum += r.actualValue;
+      b.deptIds.add(r.departmentId);
+      if (r.status === 'Target Achieved') b.achievedCount += 1;
+      else if (r.status === 'Nearly Achieved') b.nearlyCount += 1;
+      else if (r.status === 'Needs Improvement') b.needsImprovementCount += 1;
+      else if (r.status === 'Critical') b.criticalCount += 1;
     }
   }
 
   return buckets.map((b) => ({
+    month: b.month,
     label: b.label,
     count: b.count,
     avgAchievement: b.count > 0 ? Math.round((b.pctSum / b.count) * 100) / 100 : 0,
+    achievedCount: b.achievedCount,
+    nearlyCount: b.nearlyCount,
+    needsImprovementCount: b.needsImprovementCount,
+    criticalCount: b.criticalCount,
     targetSum: Math.round(b.targetSum * 100) / 100,
     actualSum: Math.round(b.actualSum * 100) / 100,
+    departmentsCount: b.deptIds.size,
   }));
 }
 
@@ -212,16 +264,71 @@ export function computeQuarterlyTrends(records: KpiRecord[]) {
   }));
 }
 
+export interface YearlyDetailedRow {
+  label: string;
+  year: number;
+  count: number;
+  avgAchievement: number;
+  achievedCount: number;
+  nearlyCount: number;
+  needsImprovementCount: number;
+  criticalCount: number;
+  targetSum: number;
+  actualSum: number;
+  departmentsCount: number;
+}
+
 export function computeAnnualTrends(records: KpiRecord[]) {
-  const map = new Map<number, { count: number; pctSum: number; targetSum: number; actualSum: number }>();
+  return computeYearlyDetailedRows(records).map((y) => ({
+    label: y.label,
+    year: y.year,
+    count: y.count,
+    avgAchievement: y.avgAchievement,
+    targetSum: y.targetSum,
+    actualSum: y.actualSum,
+  }));
+}
+
+export function computeYearlyDetailedRows(records: KpiRecord[]): YearlyDetailedRow[] {
+  const map = new Map<
+    number,
+    {
+      count: number;
+      pctSum: number;
+      achievedCount: number;
+      nearlyCount: number;
+      needsImprovementCount: number;
+      criticalCount: number;
+      targetSum: number;
+      actualSum: number;
+      deptIds: Set<string>;
+    }
+  >();
+
   for (const r of records) {
-    const cur = map.get(r.reportingYear) || { count: 0, pctSum: 0, targetSum: 0, actualSum: 0 };
+    const cur = map.get(r.reportingYear) || {
+      count: 0,
+      pctSum: 0,
+      achievedCount: 0,
+      nearlyCount: 0,
+      needsImprovementCount: 0,
+      criticalCount: 0,
+      targetSum: 0,
+      actualSum: 0,
+      deptIds: new Set<string>(),
+    };
     cur.count += 1;
     cur.pctSum += r.achievementPct;
     cur.targetSum += r.targetValue;
     cur.actualSum += r.actualValue;
+    cur.deptIds.add(r.departmentId);
+    if (r.status === 'Target Achieved') cur.achievedCount += 1;
+    else if (r.status === 'Nearly Achieved') cur.nearlyCount += 1;
+    else if (r.status === 'Needs Improvement') cur.needsImprovementCount += 1;
+    else if (r.status === 'Critical') cur.criticalCount += 1;
     map.set(r.reportingYear, cur);
   }
+
   return Array.from(map.entries())
     .sort((a, b) => a[0] - b[0])
     .map(([year, v]) => ({
@@ -229,8 +336,13 @@ export function computeAnnualTrends(records: KpiRecord[]) {
       year,
       count: v.count,
       avgAchievement: v.count > 0 ? Math.round((v.pctSum / v.count) * 100) / 100 : 0,
+      achievedCount: v.achievedCount,
+      nearlyCount: v.nearlyCount,
+      needsImprovementCount: v.needsImprovementCount,
+      criticalCount: v.criticalCount,
       targetSum: Math.round(v.targetSum * 100) / 100,
       actualSum: Math.round(v.actualSum * 100) / 100,
+      departmentsCount: v.deptIds.size,
     }));
 }
 
