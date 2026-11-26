@@ -6,7 +6,7 @@
   :root {
     --font-display: 'Bricolage Grotesque', sans-serif;
     --font-sans: 'DM Sans', sans-serif;
-    --font-mono: 'IBM Plex Mono', monospace;
+    --font-tabular: 'Manrope', sans-serif;
   }
 
   body {
@@ -22,8 +22,9 @@
   }
 
   .font-mono-tabular {
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
+    font-family: var(--font-tabular);
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
   }
 }
 

@@ -132,6 +132,14 @@ export function ReportsView() {
     [reportRecords, departments, selectedDeptId]
   );
   const monthlyDetailed = useMemo(() => computeMonthlyDetailedRows(reportRecords), [reportRecords]);
+  const monthlyChartData = useMemo(
+    () =>
+      monthlyDetailed.map((m) => ({
+        ...m,
+        avgAchievement: m.count > 0 ? m.avgAchievement : null,
+      })),
+    [monthlyDetailed]
+  );
   const activeMonthlyRows = useMemo(
     () => monthlyDetailed.filter((m) => m.count > 0),
     [monthlyDetailed]
@@ -697,10 +705,16 @@ export function ReportsView() {
                 </div>
                 <div className="h-[180px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={monthlyDetailed}>
+                    <LineChart data={monthlyChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" vertical={false} />
                       <XAxis dataKey="label" tick={{ fill: '#64748B', fontSize: 10 }} axisLine={{ stroke: '#CBD5E1' }} />
-                      <YAxis tick={{ fill: '#64748B', fontSize: 10 }} unit="%" axisLine={false} />
+                      <YAxis
+                        domain={[60, 100]}
+                        ticks={[60, 70, 80, 90, 100]}
+                        tick={{ fill: '#64748B', fontSize: 10 }}
+                        unit="%"
+                        axisLine={false}
+                      />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: '#0F172A',
@@ -710,14 +724,19 @@ export function ReportsView() {
                           fontSize: '12px',
                           boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
                         }}
+                        formatter={(val: any) =>
+                          val == null ? ['No data', 'Monthly Avg %'] : [`${val}%`, 'Monthly Avg %']
+                        }
                       />
                       <Line
                         type="monotone"
                         dataKey="avgAchievement"
                         name="Monthly Avg %"
+                        connectNulls
                         stroke="#2563EB"
                         strokeWidth={2.5}
                         dot={{ r: 3.5, fill: '#FACC15', stroke: '#2563EB', strokeWidth: 1.5 }}
+                        activeDot={{ r: 5, fill: '#F59E0B' }}
                       />
                     </LineChart>
                   </ResponsiveContainer>

@@ -34,10 +34,38 @@ import { formatPeriodLabel, formatShortDate, getStatusColor, MONTH_NAMES, normal
 
 type BreakdownTab = 'all' | 'monthly' | 'yearly' | 'department';
 
+type IllustrationViewKey =
+  | 'dept_comparison'
+  | 'monthly_performance'
+  | 'quarterly_comparison'
+  | 'annual_trend'
+  | 'achievement_distribution'
+  | 'overall_gauge'
+  | 'category_performance'
+  | 'dept_leaderboard'
+  | 'improvement_delta'
+  | 'breakdown_details'
+  | 'all';
+
+const ILLUSTRATION_OPTIONS: { value: IllustrationViewKey; label: string }[] = [
+  { value: 'dept_comparison', label: '01. Department-Wise KPI Comparison' },
+  { value: 'monthly_performance', label: '02. Monthly-Wise KPI Performance (Jan–Dec)' },
+  { value: 'quarterly_comparison', label: '03. Quarterly Performance Comparison (Q1–Q4)' },
+  { value: 'annual_trend', label: '04. Annual Performance Trend' },
+  { value: 'achievement_distribution', label: '06. Achievement Distribution (Achieved vs Not Achieved)' },
+  { value: 'overall_gauge', label: '07. Overall Performance Gauge' },
+  { value: 'category_performance', label: '08. KPI Category Performance' },
+  { value: 'dept_leaderboard', label: '09. Department Performance Leaderboard' },
+  { value: 'improvement_delta', label: '10. Performance Improvement Delta' },
+  { value: 'breakdown_details', label: '11. Detailed Breakdown Tables & KPI Records' },
+  { value: 'all', label: 'Show All Illustrations & Tables' },
+];
+
 export function GraphicalIllustrationsView() {
   const { departments, records, settings } = useData();
   const exportContainerRef = useRef<HTMLDivElement>(null);
 
+  const [selectedView, setSelectedView] = useState<IllustrationViewKey>('dept_comparison');
   const [selectedDeptIds, setSelectedDeptIds] = useState<string[]>([]);
   const [yearFilter, setYearFilter] = useState<number>(0);
   const [monthFilter, setMonthFilter] = useState<number>(0);
@@ -49,6 +77,9 @@ export function GraphicalIllustrationsView() {
   const [focusedMonth, setFocusedMonth] = useState<number>(0);
   const [focusedYear, setFocusedYear] = useState<number>(0);
   const [exporting, setExporting] = useState<'png' | 'pdf' | null>(null);
+
+  const showAll = selectedView === 'all';
+  const showView = (key: IllustrationViewKey) => showAll || selectedView === key;
 
   const availableYears = useMemo(() => {
     const s = new Set<number>([settings.defaultReportingYear || new Date().getFullYear()]);
@@ -86,6 +117,14 @@ export function GraphicalIllustrationsView() {
     [filteredRecords, departments, selectedDeptIds]
   );
   const monthlyDetailed = useMemo(() => computeMonthlyDetailedRows(filteredRecords), [filteredRecords]);
+  const monthlyChartData = useMemo(
+    () =>
+      monthlyDetailed.map((m) => ({
+        ...m,
+        avgAchievement: m.count > 0 ? m.avgAchievement : null,
+      })),
+    [monthlyDetailed]
+  );
   const quarterlyTrends = useMemo(() => computeQuarterlyTrends(filteredRecords), [filteredRecords]);
   const yearlyDetailed = useMemo(() => computeYearlyDetailedRows(filteredRecords), [filteredRecords]);
   const categoryBreakdown = useMemo(() => computeCategoryBreakdown(filteredRecords), [filteredRecords]);
@@ -225,8 +264,35 @@ export function GraphicalIllustrationsView() {
         </div>
       </div>
 
-      {/* Department Multi-Select & Period Controls */}
-      <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-4 space-y-3 shadow-xs">
+      {/* Illustration Selector & Period / Department Filters */}
+      <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-4 space-y-3.5 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-300/70">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+            <label
+              htmlFor="illustration-view-select"
+              className="text-xs font-bold text-slate-900 whitespace-nowrap"
+            >
+              Select Data / Chart to Display:
+            </label>
+            <select
+              id="illustration-view-select"
+              aria-label="Select data or chart to display"
+              value={selectedView}
+              onChange={(e) => setSelectedView(e.target.value as IllustrationViewKey)}
+              className="bg-[#F5F7FA] border border-amber-500/60 rounded-lg px-3.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/25 min-w-[260px] sm:min-w-[340px] shadow-2xs cursor-pointer"
+            >
+              {ILLUSTRATION_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <span className="text-[11px] font-medium text-slate-500">
+            Showing {ILLUSTRATION_OPTIONS.find((o) => o.value === selectedView)?.label}
+          </span>
+        </div>
+
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-xs font-semibold text-amber-700">
             Compare Departments ({selectedDeptIds.length === 0 ? 'All Selected' : `${selectedDeptIds.length} Selected`})
@@ -314,155 +380,165 @@ export function GraphicalIllustrationsView() {
       ) : (
         <div ref={exportContainerRef} className="space-y-6">
           {/* Row 1: #7 Gauge + #1 Dept Comparison + #6 Achievement Distribution */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* 7. Overall Company Performance — Gauge Visualization */}
-            <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 flex flex-col justify-between shadow-xs">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 font-display">
-                  07. Overall Performance Gauge
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Aggregate KPI achievement index
-                </p>
-              </div>
+          {(showView('overall_gauge') || showView('dept_comparison') || showView('achievement_distribution')) && (
+            <div className={showAll ? 'grid grid-cols-1 lg:grid-cols-3 gap-6' : 'grid grid-cols-1 gap-6'}>
+              {/* 7. Overall Company Performance — Gauge Visualization */}
+              {showView('overall_gauge') && (
+                <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 flex flex-col justify-between shadow-xs">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900 font-display">
+                      07. Overall Performance Gauge
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Aggregate KPI achievement index
+                    </p>
+                  </div>
 
-              <div className="flex flex-col items-center justify-center py-4">
-                <svg viewBox="0 0 240 140" className="w-full max-w-[250px]">
-                  <defs>
-                    <linearGradient id="gaugeGoldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#EF4444" />
-                      <stop offset="50%" stopColor="#F59E0B" />
-                      <stop offset="80%" stopColor="#EAB308" />
-                      <stop offset="100%" stopColor="#10B981" />
-                    </linearGradient>
-                  </defs>
-                  <path
-                    d="M 24 118 A 96 96 0 0 1 216 118"
-                    fill="none"
-                    stroke="#E2E8F0"
-                    strokeWidth="18"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M 24 118 A 96 96 0 0 1 216 118"
-                    fill="none"
-                    stroke="url(#gaugeGoldGrad)"
-                    strokeWidth="18"
-                    strokeLinecap="round"
-                    strokeDasharray="301.6"
-                    strokeDashoffset={301.6 - (Math.min(100, gaugePct) / 100) * 301.6}
-                  />
-                  <g transform={`translate(120, 118) rotate(${gaugeAngle})`}>
-                    <polygon points="-3.5,0 0,-78 3.5,0" fill="#0F172A" />
-                    <circle cx="0" cy="0" r="7" fill="#F59E0B" stroke="#FFFFFF" strokeWidth="2.5" />
-                  </g>
-                </svg>
-                <div className="text-3xl font-bold text-amber-700 font-mono-tabular -mt-2">
-                  {metrics.avgAchievement.toFixed(1)}%
+                  <div className="flex flex-col items-center justify-center py-6">
+                    <svg viewBox="0 0 240 140" className={showAll ? 'w-full max-w-[250px]' : 'w-full max-w-[340px]'}>
+                      <defs>
+                        <linearGradient id="gaugeGoldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#EF4444" />
+                          <stop offset="50%" stopColor="#F59E0B" />
+                          <stop offset="80%" stopColor="#EAB308" />
+                          <stop offset="100%" stopColor="#10B981" />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d="M 24 118 A 96 96 0 0 1 216 118"
+                        fill="none"
+                        stroke="#CBD5E1"
+                        strokeWidth="18"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M 24 118 A 96 96 0 0 1 216 118"
+                        fill="none"
+                        stroke="url(#gaugeGoldGrad)"
+                        strokeWidth="18"
+                        strokeLinecap="round"
+                        strokeDasharray="301.6"
+                        strokeDashoffset={301.6 - (Math.min(100, gaugePct) / 100) * 301.6}
+                      />
+                      <g transform={`translate(120, 118) rotate(${gaugeAngle})`}>
+                        <polygon points="-3.5,0 0,-78 3.5,0" fill="#0F172A" />
+                        <circle cx="0" cy="0" r="7" fill="#F59E0B" stroke="#FFFFFF" strokeWidth="2.5" />
+                      </g>
+                    </svg>
+                    <div className="text-3xl font-bold text-amber-700 font-mono-tabular -mt-2">
+                      {metrics.avgAchievement.toFixed(1)}%
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      Target threshold: {settings.thresholdAchieved}% · {metrics.totalKpis} KPIs evaluated
+                    </div>
+                  </div>
                 </div>
-                <div className="text-xs text-slate-500 mt-1">
-                  Target threshold: {settings.thresholdAchieved}% · {metrics.totalKpis} KPIs evaluated
-                </div>
-              </div>
-            </div>
+              )}
 
-            {/* 1. Department-Wise KPI Comparison — Bar Chart */}
-            <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
-              <h2 className="text-base font-bold text-slate-900 font-display">
-                01. Department-Wise KPI Comparison
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5 mb-3">
-                Mean achievement percentage per department
-              </p>
-              <div className="h-[230px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={deptComparison}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" vertical={false} />
-                    <XAxis dataKey="code" tick={{ fill: '#475569', fontSize: 11 }} axisLine={{ stroke: '#CBD5E1' }} />
-                    <YAxis tick={{ fill: '#475569', fontSize: 11 }} unit="%" axisLine={false} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#0F172A',
-                        borderColor: '#334155',
-                        borderRadius: '10px',
-                        color: '#F8FAFC',
-                        fontSize: '12px',
-                        boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
-                      }}
-                    />
-                    <Bar dataKey="avgAchievement" name="Avg %" radius={[6, 6, 0, 0]} maxBarSize={40}>
-                      {deptComparison.map((entry, idx) => (
-                        <Cell key={entry.departmentId} fill={deptBarPalette[idx % deptBarPalette.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* 6. Achievement Distribution — Donut / Pie Switchable */}
-            <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <div>
+              {/* 1. Department-Wise KPI Comparison — Bar Chart */}
+              {showView('dept_comparison') && (
+                <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
                   <h2 className="text-base font-bold text-slate-900 font-display">
-                    06. Achievement Distribution
+                    01. Department-Wise KPI Comparison
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Status classification split</p>
+                  <p className="text-xs text-slate-500 mt-0.5 mb-3">
+                    Mean achievement percentage per department
+                  </p>
+                  <div className={showAll ? 'h-[230px]' : 'h-[360px]'}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={deptComparison}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" vertical={false} />
+                        <XAxis dataKey="code" tick={{ fill: '#475569', fontSize: 11 }} axisLine={{ stroke: '#CBD5E1' }} />
+                        <YAxis tick={{ fill: '#475569', fontSize: 11 }} unit="%" axisLine={false} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#0F172A',
+                            borderColor: '#334155',
+                            borderRadius: '10px',
+                            color: '#F8FAFC',
+                            fontSize: '12px',
+                            boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
+                          }}
+                        />
+                        <Bar dataKey="avgAchievement" name="Avg %" radius={[6, 6, 0, 0]} maxBarSize={showAll ? 40 : 56}>
+                          {deptComparison.map((entry, idx) => (
+                            <Cell key={entry.departmentId} fill={deptBarPalette[idx % deptBarPalette.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 p-0.5 bg-[#DCE3EE] rounded-lg border border-slate-300">
-                  {(['donut', 'pie'] as const).map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setDistChartType(t)}
-                      className={`px-2.5 py-1 rounded text-[11px] font-medium capitalize cursor-pointer transition-colors ${
-                        distChartType === t ? 'bg-[#FACC15] text-slate-950 font-semibold shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              )}
 
-              <div className="h-[230px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={distributionData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={distChartType === 'donut' ? 52 : 0}
-                      outerRadius={82}
-                      paddingAngle={3}
-                    >
-                      {distributionData.map((entry) => (
-                        <Cell key={entry.name} fill={entry.color} />
+              {/* 6. Achievement Distribution — Donut / Pie Switchable */}
+              {showView('achievement_distribution') && (
+                <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div>
+                      <h2 className="text-base font-bold text-slate-900 font-display">
+                        06. Achievement Distribution
+                      </h2>
+                      <p className="text-xs text-slate-500 mt-0.5">Status classification split</p>
+                    </div>
+                    <div className="flex items-center gap-1 p-0.5 bg-[#DCE3EE] rounded-lg border border-slate-300">
+                      {(['donut', 'pie'] as const).map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setDistChartType(t)}
+                          className={`px-2.5 py-1 rounded text-[11px] font-medium capitalize cursor-pointer transition-colors ${
+                            distChartType === t ? 'bg-[#FACC15] text-slate-950 font-semibold shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          {t}
+                        </button>
                       ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#0F172A',
-                        borderColor: '#334155',
-                        borderRadius: '10px',
-                        color: '#F8FAFC',
-                        fontSize: '12px',
-                        boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
-                      }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: '11px', color: '#475569' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+                    </div>
+                  </div>
+
+                  <div className={showAll ? 'h-[230px]' : 'h-[360px]'}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={distributionData}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={distChartType === 'donut' ? (showAll ? 52 : 76) : 0}
+                          outerRadius={showAll ? 82 : 124}
+                          paddingAngle={3}
+                        >
+                          {distributionData.map((entry) => (
+                            <Cell key={entry.name} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#0F172A',
+                            borderColor: '#334155',
+                            borderRadius: '10px',
+                            color: '#F8FAFC',
+                            fontSize: '12px',
+                            boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
+                          }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '11px', color: '#475569' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Row 2: #2 Monthly Performance + #3 Quarterly Comparative */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 2. Monthly KPI Performance */}
-            <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
+          {(showView('monthly_performance') || showView('quarterly_comparison')) && (
+            <div className={showAll ? 'grid grid-cols-1 lg:grid-cols-2 gap-6' : 'grid grid-cols-1 gap-6'}>
+              {/* 2. Monthly KPI Performance */}
+              {showView('monthly_performance') && (
+                <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <div>
                   <h2 className="text-base font-bold text-slate-900 font-display">
@@ -488,13 +564,19 @@ export function GraphicalIllustrationsView() {
                 </div>
               </div>
 
-              <div className="h-[250px]">
+              <div className={showAll ? 'h-[250px]' : 'h-[360px]'}>
                 <ResponsiveContainer width="100%" height="100%">
                   {monthlyChartType === 'line' ? (
-                    <LineChart data={monthlyDetailed}>
+                    <LineChart data={monthlyChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" vertical={false} />
                       <XAxis dataKey="label" tick={{ fill: '#475569', fontSize: 11 }} axisLine={{ stroke: '#CBD5E1' }} />
-                      <YAxis tick={{ fill: '#475569', fontSize: 11 }} unit="%" axisLine={false} />
+                      <YAxis
+                        domain={[60, 100]}
+                        ticks={[60, 70, 80, 90, 100]}
+                        tick={{ fill: '#475569', fontSize: 11 }}
+                        unit="%"
+                        axisLine={false}
+                      />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: '#0F172A',
@@ -504,21 +586,32 @@ export function GraphicalIllustrationsView() {
                           fontSize: '12px',
                           boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
                         }}
+                        formatter={(val: any) =>
+                          val == null ? ['No data', 'Achievement %'] : [`${val}%`, 'Achievement %']
+                        }
                       />
                       <Line
                         type="monotone"
                         dataKey="avgAchievement"
                         name="Achievement %"
+                        connectNulls
                         stroke="#2563EB"
                         strokeWidth={2.75}
                         dot={{ r: 4, fill: '#FACC15', stroke: '#2563EB', strokeWidth: 2 }}
+                        activeDot={{ r: 6, fill: '#F59E0B' }}
                       />
                     </LineChart>
                   ) : monthlyChartType === 'area' ? (
-                    <AreaChart data={monthlyDetailed}>
+                    <AreaChart data={monthlyChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" vertical={false} />
                       <XAxis dataKey="label" tick={{ fill: '#475569', fontSize: 11 }} axisLine={{ stroke: '#CBD5E1' }} />
-                      <YAxis tick={{ fill: '#475569', fontSize: 11 }} unit="%" axisLine={false} />
+                      <YAxis
+                        domain={[60, 100]}
+                        ticks={[60, 70, 80, 90, 100]}
+                        tick={{ fill: '#475569', fontSize: 11 }}
+                        unit="%"
+                        axisLine={false}
+                      />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: '#0F172A',
@@ -528,11 +621,15 @@ export function GraphicalIllustrationsView() {
                           fontSize: '12px',
                           boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
                         }}
+                        formatter={(val: any) =>
+                          val == null ? ['No data', 'Achievement %'] : [`${val}%`, 'Achievement %']
+                        }
                       />
                       <Area
                         type="monotone"
                         dataKey="avgAchievement"
                         name="Achievement %"
+                        connectNulls
                         stroke="#2563EB"
                         fill="#3B82F6"
                         fillOpacity={0.14}
@@ -540,7 +637,49 @@ export function GraphicalIllustrationsView() {
                       />
                     </AreaChart>
                   ) : (
-                    <BarChart data={monthlyDetailed}>
+                    <BarChart data={monthlyChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fill: '#475569', fontSize: 11 }} axisLine={{ stroke: '#CBD5E1' }} />
+                      <YAxis
+                        domain={[60, 100]}
+                        ticks={[60, 70, 80, 90, 100]}
+                        tick={{ fill: '#475569', fontSize: 11 }}
+                        unit="%"
+                        axisLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#0F172A',
+                          borderColor: '#334155',
+                          borderRadius: '10px',
+                          color: '#F8FAFC',
+                          fontSize: '12px',
+                          boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
+                        }}
+                        formatter={(val: any) =>
+                          val == null ? ['No data', 'Achievement %'] : [`${val}%`, 'Achievement %']
+                        }
+                      />
+                      <Bar dataKey="avgAchievement" name="Achievement %" fill="#2563EB" radius={[5, 5, 0, 0]} maxBarSize={30} />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+              </div>
+            </div>
+              )}
+
+            {/* 3. Quarterly Performance Comparative */}
+            {showView('quarterly_comparison') && (
+              <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
+                <h2 className="text-base font-bold text-slate-900 font-display">
+                  03. Quarterly Performance Comparison
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5 mb-3">
+                  Q1–Q4 consolidated achievement rate and submission volume
+                </p>
+                <div className={showAll ? 'h-[250px]' : 'h-[360px]'}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={quarterlyTrends}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" vertical={false} />
                       <XAxis dataKey="label" tick={{ fill: '#475569', fontSize: 11 }} axisLine={{ stroke: '#CBD5E1' }} />
                       <YAxis tick={{ fill: '#475569', fontSize: 11 }} unit="%" axisLine={false} />
@@ -554,159 +693,27 @@ export function GraphicalIllustrationsView() {
                           boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
                         }}
                       />
-                      <Bar dataKey="avgAchievement" name="Achievement %" fill="#2563EB" radius={[5, 5, 0, 0]} maxBarSize={30} />
+                      <Bar dataKey="avgAchievement" name="Avg Achievement %" fill="#F59E0B" radius={[6, 6, 0, 0]} maxBarSize={56} />
                     </BarChart>
-                  )}
-                </ResponsiveContainer>
+                  </ResponsiveContainer>
+                </div>
               </div>
+            )}
             </div>
-
-            {/* 3. Quarterly Performance Comparative */}
-            <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
-              <h2 className="text-base font-bold text-slate-900 font-display">
-                03. Quarterly Performance Comparison
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5 mb-3">
-                Q1–Q4 consolidated achievement rate and submission volume
-              </p>
-              <div className="h-[250px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={quarterlyTrends}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fill: '#475569', fontSize: 11 }} axisLine={{ stroke: '#CBD5E1' }} />
-                    <YAxis tick={{ fill: '#475569', fontSize: 11 }} unit="%" axisLine={false} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#0F172A',
-                        borderColor: '#334155',
-                        borderRadius: '10px',
-                        color: '#F8FAFC',
-                        fontSize: '12px',
-                        boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
-                      }}
-                    />
-                    <Bar dataKey="avgAchievement" name="Avg Achievement %" fill="#F59E0B" radius={[6, 6, 0, 0]} maxBarSize={52} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Row 3: #4 Annual Trend */}
-          <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
-            <h2 className="text-base font-bold text-slate-900 font-display">
-              04. Annual Performance Trend
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5 mb-3">
-              Multi-year performance trajectory
-            </p>
-            <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={yearlyDetailed}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fill: '#475569', fontSize: 11 }} axisLine={{ stroke: '#CBD5E1' }} />
-                  <YAxis tick={{ fill: '#475569', fontSize: 11 }} unit="%" axisLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#0F172A',
-                      borderColor: '#334155',
-                      borderRadius: '10px',
-                      color: '#F8FAFC',
-                      fontSize: '12px',
-                      boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="avgAchievement"
-                    name="Annual Avg %"
-                    stroke="#0D9488"
-                    strokeWidth={3}
-                    dot={{ r: 5, fill: '#FACC15', stroke: '#0D9488', strokeWidth: 2 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Row 4: #8 Category Horizontal Bar + #9 Department Leaderboard + #10 Performance Improvement */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* 8. KPI Category Performance — Horizontal Bar Chart */}
+          {showView('annual_trend') && (
             <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
               <h2 className="text-base font-bold text-slate-900 font-display">
-                08. KPI Category Performance
+                04. Annual Performance Trend
               </h2>
               <p className="text-xs text-slate-500 mt-0.5 mb-3">
-                Average achievement by strategic category
+                Multi-year performance trajectory
               </p>
-              <div className="h-[260px]">
+              <div className={showAll ? 'h-[250px]' : 'h-[360px]'}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={categoryBreakdown} layout="vertical" margin={{ left: 10, right: 18 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" horizontal={false} />
-                    <XAxis type="number" tick={{ fill: '#475569', fontSize: 11 }} unit="%" axisLine={{ stroke: '#CBD5E1' }} />
-                    <YAxis type="category" dataKey="category" width={110} tick={{ fill: '#334155', fontSize: 11 }} axisLine={false} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#0F172A',
-                        borderColor: '#334155',
-                        borderRadius: '10px',
-                        color: '#F8FAFC',
-                        fontSize: '12px',
-                        boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
-                      }}
-                    />
-                    <Bar dataKey="avgAchievement" name="Avg %" fill="#7C3AED" radius={[0, 6, 6, 0]} barSize={18} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* 9. Department Ranking — Performance Leaderboard */}
-            <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center">
-                  <Trophy className="w-4 h-4 text-amber-600" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-slate-900 font-display">
-                    09. Department Performance Leaderboard
-                  </h2>
-                </div>
-              </div>
-              <div className="space-y-3 mt-4 max-h-[250px] overflow-y-auto pr-1">
-                {deptComparison.map((d, idx) => (
-                  <div key={d.departmentId} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-slate-800 truncate">
-                        <span className="font-mono-tabular font-bold text-amber-700 mr-2">#{idx + 1}</span>
-                        {d.departmentName}
-                      </span>
-                      <span className="font-mono-tabular font-bold text-amber-700">
-                        {d.avgAchievement.toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-amber-500 to-emerald-500 rounded-full"
-                        style={{ width: `${Math.min(100, d.avgAchievement)}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 10. Performance Improvement — Historical Delta Analysis */}
-            <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
-              <h2 className="text-base font-bold text-slate-900 font-display">
-                10. Performance Improvement Delta
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5 mb-3">
-                Month-over-month achievement variance (% points)
-              </p>
-              <div className="h-[260px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={improvementData}>
+                  <LineChart data={yearlyDetailed}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" vertical={false} />
                     <XAxis dataKey="label" tick={{ fill: '#475569', fontSize: 11 }} axisLine={{ stroke: '#CBD5E1' }} />
                     <YAxis tick={{ fill: '#475569', fontSize: 11 }} unit="%" axisLine={false} />
@@ -720,22 +727,136 @@ export function GraphicalIllustrationsView() {
                         boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
                       }}
                     />
-                    <Bar dataKey="delta" name="MoM Delta %" radius={[4, 4, 0, 0]} maxBarSize={32}>
-                      {improvementData.map((item) => (
-                        <Cell
-                          key={item.label}
-                          fill={item.delta >= 0 ? '#10B981' : '#EF4444'}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
+                    <Line
+                      type="monotone"
+                      dataKey="avgAchievement"
+                      name="Annual Avg %"
+                      stroke="#0D9488"
+                      strokeWidth={3}
+                      dot={{ r: 5, fill: '#FACC15', stroke: '#0D9488', strokeWidth: 2 }}
+                    />
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Row 4: #8 Category Horizontal Bar + #9 Department Leaderboard + #10 Performance Improvement */}
+          {(showView('category_performance') || showView('dept_leaderboard') || showView('improvement_delta')) && (
+            <div className={showAll ? 'grid grid-cols-1 lg:grid-cols-3 gap-6' : 'grid grid-cols-1 gap-6'}>
+              {/* 8. KPI Category Performance — Horizontal Bar Chart */}
+              {showView('category_performance') && (
+                <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
+                  <h2 className="text-base font-bold text-slate-900 font-display">
+                    08. KPI Category Performance
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5 mb-3">
+                    Average achievement by strategic category
+                  </p>
+                  <div className={showAll ? 'h-[260px]' : 'h-[360px]'}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={categoryBreakdown} layout="vertical" margin={{ left: 10, right: 18 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" horizontal={false} />
+                        <XAxis type="number" tick={{ fill: '#475569', fontSize: 11 }} unit="%" axisLine={{ stroke: '#CBD5E1' }} />
+                        <YAxis type="category" dataKey="category" width={120} tick={{ fill: '#334155', fontSize: 11 }} axisLine={false} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#0F172A',
+                            borderColor: '#334155',
+                            borderRadius: '10px',
+                            color: '#F8FAFC',
+                            fontSize: '12px',
+                            boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
+                          }}
+                        />
+                        <Bar dataKey="avgAchievement" name="Avg %" fill="#7C3AED" radius={[0, 6, 6, 0]} barSize={20} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* 9. Department Ranking — Performance Leaderboard */}
+              {showView('dept_leaderboard') && (
+                <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center">
+                      <Trophy className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-slate-900 font-display">
+                        09. Department Performance Leaderboard
+                      </h2>
+                    </div>
+                  </div>
+                  <div className={`space-y-3 mt-4 overflow-y-auto pr-1 ${showAll ? 'max-h-[250px]' : 'max-h-[420px]'}`}>
+                    {deptComparison.map((d, idx) => (
+                      <div key={d.departmentId} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium text-slate-800 truncate">
+                            <span className="font-mono-tabular font-bold text-amber-700 mr-2">#{idx + 1}</span>
+                            {d.departmentName}
+                          </span>
+                          <span className="font-mono-tabular font-bold text-amber-700">
+                            {d.avgAchievement.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="h-2.5 bg-[#DCE3EE] rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-amber-500 to-emerald-500 rounded-full"
+                            style={{ width: `${Math.min(100, d.avgAchievement)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 10. Performance Improvement — Historical Delta Analysis */}
+              {showView('improvement_delta') && (
+                <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
+                  <h2 className="text-base font-bold text-slate-900 font-display">
+                    10. Performance Improvement Delta
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5 mb-3">
+                    Month-over-month achievement variance (% points)
+                  </p>
+                  <div className={showAll ? 'h-[260px]' : 'h-[360px]'}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={improvementData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" vertical={false} />
+                        <XAxis dataKey="label" tick={{ fill: '#475569', fontSize: 11 }} axisLine={{ stroke: '#CBD5E1' }} />
+                        <YAxis tick={{ fill: '#475569', fontSize: 11 }} unit="%" axisLine={false} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#0F172A',
+                            borderColor: '#334155',
+                            borderRadius: '10px',
+                            color: '#F8FAFC',
+                            fontSize: '12px',
+                            boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
+                          }}
+                        />
+                        <Bar dataKey="delta" name="MoM Delta %" radius={[4, 4, 0, 0]} maxBarSize={36}>
+                          {improvementData.map((item) => (
+                            <Cell
+                              key={item.label}
+                              fill={item.delta >= 0 ? '#10B981' : '#EF4444'}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Row 5: Interactive Monthly-Wise, Yearly-Wise & Department-Wise Breakdowns + KPI Details */}
-          <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl overflow-hidden shadow-xs">
+          {showView('breakdown_details') && (
+            <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl overflow-hidden shadow-xs">
             <div className="px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-bold text-slate-900 font-display">
@@ -1058,6 +1179,7 @@ export function GraphicalIllustrationsView() {
               </table>
             </div>
           </div>
+          )}
         </div>
       )}
     </div>

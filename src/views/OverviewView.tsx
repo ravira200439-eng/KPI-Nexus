@@ -79,8 +79,14 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
   const quarterlyData = useMemo(() => computeQuarterlyTrends(filtered), [filtered]);
   const annualData = useMemo(() => computeAnnualTrends(filtered), [filtered]);
 
-  const activeTrendData =
-    trendMode === 'monthly' ? monthlyData : trendMode === 'quarterly' ? quarterlyData : annualData;
+  const activeTrendData = useMemo(() => {
+    const raw =
+      trendMode === 'monthly' ? monthlyData : trendMode === 'quarterly' ? quarterlyData : annualData;
+    return raw.map((d) => ({
+      ...d,
+      avgAchievement: d.count > 0 ? d.avgAchievement : null,
+    }));
+  }, [trendMode, monthlyData, quarterlyData, annualData]);
 
   const resetFilters = () =>
     setFilters({
@@ -447,7 +453,13 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
                       tick={{ fill: '#475569', fontSize: 12 }}
                       axisLine={{ stroke: '#94A3B8' }}
                     />
-                    <YAxis tick={{ fill: '#475569', fontSize: 12 }} axisLine={false} unit="%" />
+                    <YAxis
+                      domain={[60, 100]}
+                      ticks={[60, 70, 80, 90, 100]}
+                      tick={{ fill: '#475569', fontSize: 12 }}
+                      axisLine={false}
+                      unit="%"
+                    />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: '#0F172A',
@@ -457,11 +469,14 @@ export function OverviewView({ onNavigate }: OverviewViewProps) {
                         fontSize: '12px',
                         boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
                       }}
-                      formatter={(val: any) => [`${val}%`, 'Avg Achievement']}
+                      formatter={(val: any) =>
+                        val == null ? ['No data', 'Avg Achievement'] : [`${val}%`, 'Avg Achievement']
+                      }
                     />
                     <Line
                       type="monotone"
                       dataKey="avgAchievement"
+                      connectNulls
                       stroke="#2563EB"
                       strokeWidth={2.75}
                       dot={{ r: 4, fill: '#FACC15', stroke: '#2563EB', strokeWidth: 2 }}

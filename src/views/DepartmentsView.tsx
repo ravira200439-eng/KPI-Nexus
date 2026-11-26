@@ -336,7 +336,14 @@ export function DepartmentsView({ onNavigate, onQuickCreateForDept }: Department
   }, [historicalRecordsForYear, deptDefs, periodTab, currentYear, currentMonth]);
 
   const metrics = useMemo(() => computeOverviewMetrics(deptRecords), [deptRecords]);
-  const monthlyData = useMemo(() => computeMonthlyTrends(allDeptRecords), [allDeptRecords]);
+  const monthlyData = useMemo(
+    () =>
+      computeMonthlyTrends(allDeptRecords).map((d) => ({
+        ...d,
+        avgAchievement: d.count > 0 ? d.avgAchievement : null,
+      })),
+    [allDeptRecords]
+  );
   const quarterlyData = useMemo(() => computeQuarterlyTrends(allDeptRecords), [allDeptRecords]);
 
   if (departments.length === 0) {
@@ -508,7 +515,13 @@ export function DepartmentsView({ onNavigate, onQuickCreateForDept }: Department
                   <LineChart data={monthlyData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" vertical={false} />
                     <XAxis dataKey="label" tick={{ fill: '#475569', fontSize: 11 }} axisLine={{ stroke: '#94A3B8' }} />
-                    <YAxis tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} unit="%" />
+                    <YAxis
+                      domain={[60, 100]}
+                      ticks={[60, 70, 80, 90, 100]}
+                      tick={{ fill: '#475569', fontSize: 11 }}
+                      axisLine={false}
+                      unit="%"
+                    />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: '#0F172A',
@@ -518,14 +531,19 @@ export function DepartmentsView({ onNavigate, onQuickCreateForDept }: Department
                         fontSize: '12px',
                         boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.35)',
                       }}
+                      formatter={(val: any) =>
+                        val == null ? ['No data', 'Achievement %'] : [`${val}%`, 'Achievement %']
+                      }
                     />
                     <Line
                       type="monotone"
                       dataKey="avgAchievement"
                       name="Achievement %"
+                      connectNulls
                       stroke="#2563EB"
                       strokeWidth={2.5}
                       dot={{ r: 3.5, fill: '#FACC15', stroke: '#2563EB', strokeWidth: 2 }}
+                      activeDot={{ r: 5.5, fill: '#F59E0B' }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
