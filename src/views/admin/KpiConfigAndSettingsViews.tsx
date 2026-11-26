@@ -148,29 +148,29 @@ export function KpiConfigurationView() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white font-display">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 font-display">
             KPI Configuration
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             Configure departmental and employee-specific KPI Targets &amp; Definitions
           </p>
         </div>
 
-        <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#FACC15]/10 border border-[#FACC15]/30 text-xs font-semibold text-[#FACC15] w-fit">
-          <Sliders className="w-3.5 h-3.5" />
+        <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-amber-500/15 border border-amber-500/35 text-xs font-semibold text-amber-900 w-fit">
+          <Sliders className="w-3.5 h-3.5 text-amber-700" />
           KPI Targets &amp; Definitions
         </div>
       </div>
 
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300 flex items-center gap-2">
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs font-medium text-rose-800 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {successMsg && (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 flex items-center gap-2">
+        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs font-medium text-emerald-800 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{successMsg}</span>
         </div>
@@ -179,20 +179,20 @@ export function KpiConfigurationView() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <form
           onSubmit={handleAddDefinition}
-          className="bg-[#0F1115] border border-white/8 rounded-xl p-6 space-y-4 h-fit"
+          className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-6 space-y-4 h-fit shadow-xs"
         >
-          <div className="flex items-center gap-2 text-base font-bold text-white font-display">
-            <Plus className="w-4 h-4 text-[#FACC15]" />
+          <div className="flex items-center gap-2 text-base font-bold text-slate-900 font-display">
+            <Plus className="w-4 h-4 text-amber-600" />
             Add KPI Target Template
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1">Department *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Department *</label>
             <select
               required
               value={defDeptId}
               onChange={(e) => setDefDeptId(e.target.value)}
-              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100"
+              className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
             >
               {departments.length === 0 && <option value="">No departments configured</option>}
               {departments.map((d) => (
@@ -204,7 +204,7 @@ export function KpiConfigurationView() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1">KPI Title *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">KPI Title *</label>
             <input
               type="text"
               required
@@ -213,28 +213,28 @@ export function KpiConfigurationView() {
               value={defTitle}
               onChange={(e) => setDefTitle(e.target.value)}
               placeholder="e.g., Incident Response SLA Compliance"
-              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100"
+              className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1">Description</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Description</label>
             <textarea
               rows={2}
               maxLength={600}
               value={defDesc}
               onChange={(e) => setDefDesc(e.target.value)}
-              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100"
+              className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1">Category</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
               <select
                 value={defCatId}
                 onChange={(e) => setDefCatId(e.target.value)}
-                className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100"
+                className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
               >
                 <option value="">General</option>
                 {categories.map((c) => (
@@ -245,11 +245,11 @@ export function KpiConfigurationView() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1">Cadence</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Cadence</label>
               <select
                 value={defPeriod}
                 onChange={(e) => setDefPeriod(e.target.value as ReportingPeriodType)}
-                className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100"
+                className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
               >
                 <option value="Monthly">Monthly</option>
                 <option value="Quarterly">Quarterly</option>
@@ -260,7 +260,7 @@ export function KpiConfigurationView() {
 
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1">Type</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Type</label>
               <select
                 value={defType}
                 onChange={(e) => {
@@ -268,7 +268,7 @@ export function KpiConfigurationView() {
                   setDefType(t);
                   if (t !== 'custom') setDefUnit(DEFAULT_UNITS[t]);
                 }}
-                className="w-full bg-[#161920] border border-white/10 rounded-lg px-2 py-2 text-xs text-zinc-100"
+                className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-2 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
               >
                 {Object.entries(MEASUREMENT_LABELS).map(([k, v]) => (
                   <option key={k} value={k}>
@@ -278,56 +278,56 @@ export function KpiConfigurationView() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1">Unit</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Unit</label>
               <input
                 type="text"
                 required
                 value={defUnit}
                 onChange={(e) => setDefUnit(e.target.value)}
-                className="w-full bg-[#161920] border border-white/10 rounded-lg px-2.5 py-2 text-xs text-zinc-100"
+                className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-2.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1">Target</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Target</label>
               <input
                 type="number"
                 step="any"
                 required
                 value={defTarget}
                 onChange={(e) => setDefTarget(e.target.value)}
-                className="w-full bg-[#161920] border border-white/10 rounded-lg px-2.5 py-2 text-xs text-zinc-100 font-mono-tabular"
+                className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-2.5 py-2 text-xs text-slate-900 font-mono-tabular focus:outline-none focus:border-amber-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
               Calculation Method
             </label>
             <select
               value={defMethod}
               onChange={(e) => setDefMethod(e.target.value as CalculationMethod)}
-              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100"
+              className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
             >
               <option value="higher_is_better">Higher is Better — (Actual / Target) × 100</option>
               <option value="lower_is_better">Lower is Better — (Target / Actual) × 100</option>
             </select>
           </div>
 
-          <div className="pt-2 border-t border-white/8 space-y-3">
+          <div className="pt-2 border-t border-slate-200 space-y-3">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={isEmployeeSpecific}
                 onChange={(e) => setIsEmployeeSpecific(e.target.checked)}
-                className="rounded bg-[#161920] border-white/20 text-[#FACC15] focus:ring-0"
+                className="rounded border-slate-300 accent-amber-500"
               />
-              <span className="text-xs font-medium text-zinc-200">Is Employee-Specific KPI?</span>
+              <span className="text-xs font-semibold text-slate-800">Is Employee-Specific KPI?</span>
             </label>
 
             {isEmployeeSpecific && (
               <div className="space-y-2">
-                <label className="block text-xs font-medium text-zinc-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Employee Name / ID *
                 </label>
                 <input
@@ -338,7 +338,7 @@ export function KpiConfigurationView() {
                   value={defEmployeeName}
                   onChange={(e) => setDefEmployeeName(e.target.value)}
                   placeholder="Select existing or type new employee name"
-                  className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100"
+                  className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
                 />
                 <datalist id="existing-dept-employees">
                   {existingEmployeesInDept.map((emp) => (
@@ -354,8 +354,8 @@ export function KpiConfigurationView() {
                         onClick={() => setDefEmployeeName(emp)}
                         className={`px-2 py-0.5 rounded text-[10px] border transition-colors cursor-pointer ${
                           defEmployeeName.trim() === emp
-                            ? 'bg-[#FACC15] text-black border-[#FACC15] font-semibold'
-                            : 'bg-[#161920] text-zinc-300 border-white/10 hover:border-[#FACC15]/50'
+                            ? 'bg-[#FACC15] text-slate-950 border-[#FACC15] font-semibold'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-amber-400'
                         }`}
                       >
                         {emp}
@@ -370,21 +370,21 @@ export function KpiConfigurationView() {
           <button
             type="submit"
             disabled={saving || departments.length === 0}
-            className="w-full py-2.5 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-xs font-semibold cursor-pointer disabled:opacity-50"
+            className="w-full py-2.5 rounded-lg bg-[#FACC15] hover:bg-amber-400 text-slate-950 text-xs font-semibold shadow-xs cursor-pointer disabled:opacity-50 transition-colors"
           >
             {saving ? 'Saving...' : 'Save KPI Target'}
           </button>
         </form>
 
-        <div className="xl:col-span-2 bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/8 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h2 className="text-base font-bold text-white font-display">
+        <div className="xl:col-span-2 bg-[#EEF2F7] border border-slate-300/80 rounded-xl overflow-hidden shadow-xs">
+          <div className="px-5 py-4 border-b border-slate-300/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h2 className="text-base font-bold text-slate-900 font-display">
               Configured Department KPI Targets ({filteredDefinitions.length})
             </h2>
             <select
               value={filterDeptId}
               onChange={(e) => setFilterDeptId(e.target.value)}
-              className="bg-[#161920] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-200"
+              className="bg-[#F5F7FA] border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500"
             >
               <option value="all">All Departments ({definitions.length})</option>
               {departments.map((d) => (
@@ -397,7 +397,7 @@ export function KpiConfigurationView() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-white/8 text-[11px] text-zinc-400 bg-[#0B0D11]">
+                <tr className="border-b border-slate-300 text-[11px] font-semibold text-slate-600 bg-[#E2E8F1]">
                   <th className="py-3 px-4">KPI Title</th>
                   <th className="py-3 px-4">Department / Employee</th>
                   <th className="py-3 px-4">Method</th>
@@ -405,38 +405,38 @@ export function KpiConfigurationView() {
                   <th className="py-3 px-4 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/6 text-xs">
+              <tbody className="divide-y divide-slate-200/80 text-xs">
                 {filteredDefinitions.map((def) => (
-                  <tr key={def.id}>
+                  <tr key={def.id} className="hover:bg-[#E5EBF3] transition-colors">
                     <td className="py-3 px-4">
-                      <div className="font-semibold text-zinc-100">{def.title}</div>
-                      <div className="text-zinc-500">
+                      <div className="font-semibold text-slate-900">{def.title}</div>
+                      <div className="text-slate-600">
                         {def.categoryName} · {def.defaultPeriodType}
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="text-zinc-300">{def.departmentName}</div>
+                      <div className="text-slate-800 font-medium">{def.departmentName}</div>
                       {def.isEmployeeSpecific && def.employeeName ? (
-                        <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] bg-[#FACC15]/10 text-[#FACC15] font-medium">
+                        <span className="inline-block mt-0.5 px-2 py-0.5 rounded border border-indigo-500/30 text-[10px] bg-indigo-500/15 text-indigo-800 font-semibold">
                           Employee: {def.employeeName}
                         </span>
                       ) : (
-                        <span className="text-[10px] text-zinc-500">Department General</span>
+                        <span className="text-[10px] text-slate-600">Department General</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-zinc-400">
+                    <td className="py-3 px-4 text-slate-600">
                       {def.calculationMethod === 'lower_is_better'
                         ? 'Lower is Better'
                         : 'Higher is Better'}
                     </td>
-                    <td className="py-3 px-4 text-right font-mono-tabular text-[#FACC15]">
+                    <td className="py-3 px-4 text-right font-mono-tabular font-bold text-amber-700">
                       {def.defaultTarget.toLocaleString()} {def.unit}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <button
                         type="button"
                         onClick={() => setDefToDelete(def)}
-                        className="p-1.5 rounded text-zinc-400 hover:text-rose-400 cursor-pointer"
+                        className="p-1.5 rounded text-slate-500 hover:text-rose-700 hover:bg-rose-500/15 cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -445,7 +445,7 @@ export function KpiConfigurationView() {
                 ))}
                 {filteredDefinitions.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-zinc-500">
+                    <td colSpan={5} className="py-8 text-center text-slate-600">
                       No KPI target definitions configured yet.
                     </td>
                   </tr>
@@ -499,10 +499,6 @@ export function SystemSettingsView() {
   const [appName, setAppName] = useState(settings.appName);
   const [currency, setCurrency] = useState(settings.currency);
   const [thresholdAchieved, setThresholdAchieved] = useState(settings.thresholdAchieved);
-  const [thresholdNearly, setThresholdNearly] = useState(settings.thresholdNearly);
-  const [thresholdNeedsImprovement, setThresholdNeedsImprovement] = useState(
-    settings.thresholdNeedsImprovement
-  );
   const [defaultReportingYear, setDefaultReportingYear] = useState(settings.defaultReportingYear);
   const [submissionReminderDays, setSubmissionReminderDays] = useState(
     settings.submissionReminderDays
@@ -517,8 +513,6 @@ export function SystemSettingsView() {
     setAppName(settings.appName);
     setCurrency(settings.currency);
     setThresholdAchieved(settings.thresholdAchieved);
-    setThresholdNearly(settings.thresholdNearly);
-    setThresholdNeedsImprovement(settings.thresholdNeedsImprovement);
     setDefaultReportingYear(settings.defaultReportingYear);
     setSubmissionReminderDays(settings.submissionReminderDays);
   }, [settings]);
@@ -529,15 +523,14 @@ export function SystemSettingsView() {
     setErrorMsg(null);
     setSavedMsg(null);
 
-    if (
-      thresholdNeedsImprovement >= thresholdNearly ||
-      thresholdNearly >= thresholdAchieved
-    ) {
-      setErrorMsg(
-        'Thresholds must be strictly ascending: Needs Improvement < Nearly Achieved < Target Achieved.'
-      );
+    const achievedNum = Number(thresholdAchieved);
+    if (!Number.isFinite(achievedNum) || achievedNum < 50 || achievedNum > 200) {
+      setErrorMsg('Achieved threshold must be between 50% and 200%.');
       return;
     }
+
+    const derivedNearly = Math.max(10, Math.min(80, achievedNum - 1));
+    const derivedNeeds = Math.max(1, Math.min(50, derivedNearly - 1));
 
     setSaving(true);
     try {
@@ -551,9 +544,9 @@ export function SystemSettingsView() {
           companyName,
           appName,
           currency,
-          thresholdAchieved: Number(thresholdAchieved),
-          thresholdNearly: Number(thresholdNearly),
-          thresholdNeedsImprovement: Number(thresholdNeedsImprovement),
+          thresholdAchieved: achievedNum,
+          thresholdNearly: derivedNearly,
+          thresholdNeedsImprovement: derivedNeeds,
           defaultReportingYear: Number(defaultReportingYear),
           submissionReminderDays: Number(submissionReminderDays),
         }
@@ -569,19 +562,19 @@ export function SystemSettingsView() {
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white font-display">System Settings</h1>
-        <p className="text-sm text-zinc-400 mt-1">
-          Configure corporate identity parameters and KPI performance classification thresholds
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 font-display">System Settings</h1>
+        <p className="text-sm text-slate-500 mt-1">
+          Configure corporate identity parameters and KPI performance classification threshold
         </p>
       </div>
 
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs font-medium text-rose-700">
           {errorMsg}
         </div>
       )}
       {savedMsg && (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 flex items-center gap-2">
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-medium text-emerald-700 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4" />
           <span>{savedMsg}</span>
         </div>
@@ -589,45 +582,45 @@ export function SystemSettingsView() {
 
       <form
         onSubmit={handleSave}
-        className="bg-[#0F1115] border border-white/8 rounded-xl p-6 space-y-5"
+        className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-6 space-y-5 shadow-xs"
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1.5">Company Name</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Company Name</label>
             <input
               type="text"
               required
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
-              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100"
+              className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-amber-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1.5">Platform Name</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Platform Name</label>
             <input
               type="text"
               required
               value={appName}
               onChange={(e) => setAppName(e.target.value)}
-              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100"
+              className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-amber-500"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1.5">Primary Currency</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Primary Currency</label>
             <input
               type="text"
               required
               maxLength={16}
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 font-mono-tabular"
+              className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 font-mono-tabular focus:outline-none focus:border-amber-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
               Default Reporting Year
             </label>
             <input
@@ -636,11 +629,11 @@ export function SystemSettingsView() {
               max={2050}
               value={defaultReportingYear}
               onChange={(e) => setDefaultReportingYear(Number(e.target.value))}
-              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 font-mono-tabular"
+              className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 font-mono-tabular focus:outline-none focus:border-amber-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
               Reminder Window (Days)
             </label>
             <input
@@ -649,58 +642,30 @@ export function SystemSettingsView() {
               max={30}
               value={submissionReminderDays}
               onChange={(e) => setSubmissionReminderDays(Number(e.target.value))}
-              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 font-mono-tabular"
+              className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 font-mono-tabular focus:outline-none focus:border-amber-500"
             />
           </div>
         </div>
 
-        <div className="pt-4 border-t border-white/8 space-y-3">
-          <h2 className="text-sm font-bold text-[#FACC15] font-display">
-            KPI Achievement Classification Thresholds (%)
+        <div className="pt-4 border-t border-slate-300/80 space-y-3">
+          <h2 className="text-sm font-bold text-amber-800 font-display">
+            KPI Achievement Classification Threshold (%)
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-emerald-400 mb-1.5">
-                Target Achieved (≥ %)
-              </label>
-              <input
-                type="number"
-                min={50}
-                max={200}
-                value={thresholdAchieved}
-                onChange={(e) => setThresholdAchieved(Number(e.target.value))}
-                className="w-full bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 font-mono-tabular"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#FACC15] mb-1.5">
-                Nearly Achieved (≥ %)
-              </label>
-              <input
-                type="number"
-                min={10}
-                max={199}
-                value={thresholdNearly}
-                onChange={(e) => setThresholdNearly(Number(e.target.value))}
-                className="w-full bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 font-mono-tabular"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-amber-400 mb-1.5">
-                Needs Improvement (≥ %)
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={198}
-                value={thresholdNeedsImprovement}
-                onChange={(e) => setThresholdNeedsImprovement(Number(e.target.value))}
-                className="w-full bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 font-mono-tabular"
-              />
-            </div>
+          <div className="max-w-xs">
+            <label className="block text-xs font-semibold text-emerald-800 mb-1.5">
+              Achieved (≥ %)
+            </label>
+            <input
+              type="number"
+              min={50}
+              max={200}
+              value={thresholdAchieved}
+              onChange={(e) => setThresholdAchieved(Number(e.target.value))}
+              className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 font-mono-tabular focus:outline-none focus:border-amber-500"
+            />
           </div>
-          <p className="text-xs text-zinc-500">
-            Any KPI scoring below <span className="text-rose-400 font-mono-tabular">{thresholdNeedsImprovement}%</span> is automatically classified as Critical.
+          <p className="text-xs text-slate-600">
+            KPIs scoring at or above <span className="text-emerald-600 font-bold font-mono-tabular">{thresholdAchieved}%</span> are classified as <span className="text-emerald-700 font-semibold">Achieved</span>; any KPI scoring below <span className="text-rose-600 font-bold font-mono-tabular">{thresholdAchieved}%</span> is automatically classified as <span className="text-rose-700 font-semibold">Not Achieved</span>.
           </p>
         </div>
 
@@ -708,7 +673,7 @@ export function SystemSettingsView() {
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2.5 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+            className="px-6 py-2.5 rounded-lg bg-[#FACC15] hover:bg-amber-400 text-slate-950 text-sm font-semibold shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
           >
             {saving ? 'Saving...' : 'Save Configuration'}
           </button>

@@ -25,39 +25,39 @@ export function ConfirmModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[#0F1115] border border-white/10 rounded-xl p-6 space-y-5">
+    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-[#EEF2F7] border border-slate-300 rounded-2xl p-6 space-y-5 shadow-2xl">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <div
               className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
                 destructive
-                  ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
-                  : 'bg-[#FACC15]/10 text-[#FACC15] border border-[#FACC15]/30'
+                  ? 'bg-rose-500/15 text-rose-700 border border-rose-500/30'
+                  : 'bg-amber-500/15 text-amber-700 border border-amber-500/30'
               }`}
             >
               <AlertTriangle className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-bold text-white font-display">{title}</h3>
+            <h3 className="text-lg font-bold text-slate-900 font-display">{title}</h3>
           </div>
           <button
             type="button"
             onClick={onCancel}
-            className="text-zinc-400 hover:text-zinc-200 p-1 rounded-md cursor-pointer"
+            className="text-slate-500 hover:text-slate-800 p-1 rounded-md cursor-pointer"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <p className="text-sm text-zinc-400 leading-relaxed">{description}</p>
+        <p className="text-sm text-slate-600 leading-relaxed">{description}</p>
 
         <div className="flex items-center justify-end gap-3 pt-2">
           <button
             type="button"
             disabled={loading}
             onClick={onCancel}
-            className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm font-medium text-zinc-200 transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-lg bg-[#E2E8F1] hover:bg-slate-300/70 border border-slate-300 text-sm font-medium text-slate-800 transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -65,10 +65,10 @@ export function ConfirmModal({
             type="button"
             disabled={loading}
             onClick={onConfirm}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer ${
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer shadow-xs ${
               destructive
-                ? 'bg-rose-600 hover:bg-rose-500 text-white'
-                : 'bg-[#FACC15] hover:bg-[#EAB308] text-black'
+                ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                : 'bg-[#FACC15] hover:bg-amber-400 text-slate-950'
             }`}
           >
             {loading ? 'Processing...' : confirmLabel}

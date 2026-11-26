@@ -217,7 +217,7 @@ service cloud.firestore {
         && data.targetValue is number
         && data.actualValue is number
         && data.achievementPct is number && data.achievementPct >= 0 && data.achievementPct <= 100000
-        && data.status in ['Target Achieved', 'Nearly Achieved', 'Needs Improvement', 'Critical']
+        && data.status in ['Achieved', 'Not Achieved']
         && data.remarks is string && data.remarks.size() <= 1000
         && isValidHttpsOrEmpty(data.evidenceUrl)
         && data.evidenceName is string && data.evidenceName.size() <= 160

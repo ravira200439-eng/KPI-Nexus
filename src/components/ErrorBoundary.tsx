@@ -28,23 +28,23 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#08090B] text-zinc-100 flex items-center justify-center p-6">
-          <div className="max-w-lg w-full bg-[#0F1115] border border-rose-500/30 rounded-xl p-8 space-y-5">
-            <div className="w-11 h-11 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+        <div className="min-h-screen bg-[#DDE3EC] text-slate-900 flex items-center justify-center p-6">
+          <div className="max-w-lg w-full bg-[#EEF2F7] border border-rose-300 rounded-2xl p-8 space-y-5 shadow-lg">
+            <div className="w-11 h-11 rounded-lg bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-700">
               <AlertOctagon className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white font-display">
+              <h2 className="text-xl font-bold text-slate-900 font-display">
                 Application Encountered an Error
               </h2>
-              <p className="text-sm text-zinc-400 mt-2 leading-relaxed break-words">
+              <p className="text-sm text-slate-600 mt-2 leading-relaxed break-words">
                 {this.state.message}
               </p>
             </div>
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-sm font-semibold transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#FACC15] hover:bg-amber-400 text-slate-950 text-sm font-semibold transition-colors cursor-pointer shadow-xs"
             >
               <RefreshCw className="w-4 h-4" />
               Reload Application

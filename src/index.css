@@ -4,15 +4,15 @@
 
 @layer base {
   :root {
-    --font-display: 'Outfit', sans-serif;
-    --font-sans: 'Plus Jakarta Sans', sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
+    --font-display: 'Bricolage Grotesque', sans-serif;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
   }
 
   body {
     font-family: var(--font-sans);
-    background-color: #08090B;
-    color: #F4F4F5;
+    background-color: #DDE3EC;
+    color: #0F172A;
     overflow-x: hidden;
   }
 
@@ -34,16 +34,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0C10;
+  background: #D5DCE7;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #27272A;
+  background: #94A3B8;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #D4AF37;
+  background: #D97706;
 }
 
 @media (prefers-reduced-motion: reduce) {

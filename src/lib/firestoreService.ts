@@ -638,10 +638,10 @@ export async function createKpiRecord(
     });
 
     await createNotification(actor, {
-      type: status === 'Critical' ? 'critical_kpi' : 'submission',
+      type: status === 'Not Achieved' ? 'critical_kpi' : 'submission',
       title:
-        status === 'Critical'
-          ? `Critical KPI Alert: ${input.kpiTitle}`
+        status === 'Not Achieved'
+          ? `Not Achieved KPI Alert: ${input.kpiTitle}`
           : `New KPI Submitted: ${input.departmentName}`,
       message: `${input.departmentName} submitted "${input.kpiTitle}" with ${achievementPct}% achievement (${status}).`,
       departmentId: input.departmentId,
@@ -718,10 +718,10 @@ export async function updateKpiRecord(
     });
 
     await createNotification(actor, {
-      type: status === 'Critical' ? 'critical_kpi' : 'update',
+      type: status === 'Not Achieved' ? 'critical_kpi' : 'update',
       title:
-        status === 'Critical'
-          ? `Critical KPI Alert: ${input.kpiTitle}`
+        status === 'Not Achieved'
+          ? `Not Achieved KPI Alert: ${input.kpiTitle}`
           : `KPI Record Updated: ${input.departmentName}`,
       message: `${actor.displayName || actor.email} updated "${input.kpiTitle}" (${achievementPct}% · ${status}).`,
       departmentId: input.departmentId,
@@ -890,7 +890,7 @@ export async function saveSystemSettings(
       action: 'Updated System Settings',
       targetCollection: 'system_settings',
       targetId: 'global',
-      details: `Updated thresholds (${input.thresholdAchieved}% / ${input.thresholdNearly}% / ${input.thresholdNeedsImprovement}%)`,
+      details: `Updated Achieved threshold (${input.thresholdAchieved}%)`,
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, 'system_settings/global');

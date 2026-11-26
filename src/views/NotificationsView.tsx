@@ -70,39 +70,39 @@ export function NotificationsView() {
     <div className="space-y-6 max-w-5xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white font-display">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 font-display">
             Notifications & Submission Alerts
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">
-            Real-time alerts for KPI submissions, critical thresholds, and reporting deadlines
+          <p className="text-sm text-slate-500 mt-1">
+            Real-time alerts for KPI submissions, unachieved thresholds, and reporting deadlines
           </p>
         </div>
 
         <button
           type="button"
           onClick={handleMarkAllRead}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#161920] hover:bg-zinc-800 border border-white/10 text-xs font-medium text-zinc-200 cursor-pointer"
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#EEF2F7] hover:bg-[#E2E8F1] border border-slate-300 text-xs font-semibold text-slate-800 cursor-pointer shadow-2xs"
         >
-          <Check className="w-4 h-4 text-[#FACC15]" />
+          <Check className="w-4 h-4 text-amber-600" />
           Mark All Read
         </button>
       </div>
 
       {/* Pending Departmental Submissions Watch */}
       {missingDepts.length > 0 && (
-        <div className="bg-[#0F1115] border border-amber-500/30 rounded-xl p-5 space-y-3">
-          <div className="flex items-center gap-2 text-sm font-bold text-amber-400 font-display">
-            <Clock className="w-4 h-4" />
+        <div className="bg-amber-500/10 border border-amber-500/35 rounded-xl p-5 space-y-3 shadow-xs">
+          <div className="flex items-center gap-2 text-sm font-bold text-amber-900 font-display">
+            <Clock className="w-4 h-4 text-amber-700" />
             Pending KPI Submissions for {MONTH_NAMES[currentMonth - 1]} {currentYear}
           </div>
-          <p className="text-xs text-zinc-400">
+          <p className="text-xs text-slate-700">
             The following active departments have not yet logged a monthly KPI record for the current cycle:
           </p>
           <div className="flex flex-wrap gap-2">
             {missingDepts.map((d) => (
               <span
                 key={d.id}
-                className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-200"
+                className="text-xs px-3 py-1.5 rounded-lg bg-[#EEF2F7] border border-amber-400/50 text-amber-950 font-medium shadow-2xs"
               >
                 {d.code} · {d.name}
               </span>
@@ -115,9 +115,9 @@ export function NotificationsView() {
       {isSuperAdmin && (
         <form
           onSubmit={handleBroadcastReminder}
-          className="bg-[#0F1115] border border-white/8 rounded-xl p-5 space-y-4"
+          className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 space-y-4 shadow-xs"
         >
-          <div className="text-sm font-bold text-white font-display">
+          <div className="text-sm font-bold text-slate-900 font-display">
             Send Reporting Deadline Reminder
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -128,12 +128,12 @@ export function NotificationsView() {
               value={reminderTitle}
               onChange={(e) => setReminderTitle(e.target.value)}
               placeholder="Reminder title (e.g., Monthly KPI Deadline Tomorrow)"
-              className="bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+              className="bg-[#F5F7FA] border border-slate-300 rounded-lg px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/20"
             />
             <select
               value={reminderDeptId}
               onChange={(e) => setReminderDeptId(e.target.value)}
-              className="bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+              className="bg-[#F5F7FA] border border-slate-300 rounded-lg px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/20"
             >
               <option value="">Broadcast to All Departments</option>
               {activeDepartments.map((d) => (
@@ -151,12 +151,12 @@ export function NotificationsView() {
               value={reminderMessage}
               onChange={(e) => setReminderMessage(e.target.value)}
               placeholder="Message details for department editors..."
-              className="flex-1 bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+              className="flex-1 bg-[#F5F7FA] border border-slate-300 rounded-lg px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/20"
             />
             <button
               type="submit"
               disabled={sending}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-xs font-semibold cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#FACC15] hover:bg-amber-400 text-slate-950 text-xs font-semibold cursor-pointer shadow-xs"
             >
               <Send className="w-3.5 h-3.5" />
               {sending ? 'Sending...' : 'Dispatch Alert'}
@@ -166,7 +166,7 @@ export function NotificationsView() {
       )}
 
       {/* Notification Stream */}
-      <div className="bg-[#0F1115] border border-white/8 rounded-xl divide-y divide-white/8">
+      <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl divide-y divide-slate-200/80 shadow-xs overflow-hidden">
         {notifications.map((n) => {
           const isRead = user ? n.readByUids.includes(user.uid) : true;
           const isCritical = n.type === 'critical_kpi';
@@ -174,28 +174,30 @@ export function NotificationsView() {
             <div
               key={n.id}
               className={`p-5 flex items-start justify-between gap-4 transition-colors ${
-                isRead ? 'opacity-70' : 'bg-white/[0.02]'
+                isRead ? 'bg-[#EEF2F7] opacity-80' : 'bg-amber-500/10'
               }`}
             >
               <div className="flex items-start gap-3.5 min-w-0">
                 <div
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 border ${
                     isCritical
-                      ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
-                      : 'bg-[#FACC15]/10 text-[#FACC15] border border-[#FACC15]/30'
+                      ? 'bg-rose-500/15 text-rose-700 border-rose-500/30'
+                      : 'bg-amber-500/15 text-amber-700 border-amber-500/30'
                   }`}
                 >
                   {isCritical ? <AlertTriangle className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
                 </div>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold text-white">{n.title}</span>
+                    <span className="text-sm font-semibold text-slate-900">{n.title}</span>
                     {!isRead && (
-                      <span className="text-[11px] font-semibold text-[#FACC15]">· Unread</span>
+                      <span className="text-[11px] font-semibold text-amber-800 bg-amber-500/20 px-2 py-0.5 rounded-md">
+                        Unread
+                      </span>
                     )}
                   </div>
-                  <p className="text-xs text-zinc-300 mt-1 leading-relaxed">{n.message}</p>
-                  <div className="text-[11px] text-zinc-500 mt-1.5">
+                  <p className="text-xs text-slate-700 mt-1 leading-relaxed">{n.message}</p>
+                  <div className="text-[11px] text-slate-500 mt-1.5">
                     {n.departmentName || 'Company-Wide'} · {formatTimestamp(n.createdAt)}
                   </div>
                 </div>
@@ -205,7 +207,7 @@ export function NotificationsView() {
                 <button
                   type="button"
                   onClick={() => handleMarkRead(n.id)}
-                  className="px-3 py-1.5 rounded-lg bg-[#161920] hover:bg-zinc-800 text-xs text-zinc-200 shrink-0 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-[#E2E8F1] hover:bg-slate-300/70 border border-slate-300 text-xs font-medium text-slate-800 shrink-0 cursor-pointer"
                 >
                   Mark Read
                 </button>
@@ -215,7 +217,7 @@ export function NotificationsView() {
         })}
 
         {notifications.length === 0 && (
-          <div className="p-10 text-center text-sm text-zinc-500">
+          <div className="p-10 text-center text-sm text-slate-600">
             No notifications recorded yet.
           </div>
         )}

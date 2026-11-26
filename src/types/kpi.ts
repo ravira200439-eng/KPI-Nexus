@@ -17,11 +17,7 @@ export type CalculationMethod = 'higher_is_better' | 'lower_is_better';
 
 export type ReportingPeriodType = 'Monthly' | 'Quarterly' | 'Annual';
 
-export type KpiStatus =
-  | 'Target Achieved'
-  | 'Nearly Achieved'
-  | 'Needs Improvement'
-  | 'Critical';
+export type KpiStatus = 'Achieved' | 'Not Achieved';
 
 export type NotificationType =
   | 'submission'
@@ -34,10 +30,8 @@ export type NavSection =
   | 'overview'
   | 'departments'
   | 'kpi_entry'
-  | 'kpi_monitoring'
   | 'graphical_illustrations'
   | 'reports'
-  | 'meeting_presentation'
   | 'notifications'
   | 'profile'
   | 'admin_portal'

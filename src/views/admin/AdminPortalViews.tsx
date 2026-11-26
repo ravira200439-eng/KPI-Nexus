@@ -90,10 +90,10 @@ export function AdminPortalView({ onNavigate }: { onNavigate: (s: NavSection) =>
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white font-display">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 font-display">
             Administrator Portal
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             Central governance, department readiness, user access control, and system activity oversight
           </p>
         </div>
@@ -102,87 +102,95 @@ export function AdminPortalView({ onNavigate }: { onNavigate: (s: NavSection) =>
           type="button"
           disabled={initializing}
           onClick={handleInitFramework}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#161920] hover:bg-zinc-800 border border-[#FACC15]/30 text-xs font-semibold text-[#FACC15] transition-colors disabled:opacity-50 cursor-pointer"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#EEF2F7] hover:bg-amber-500/15 border border-amber-400/60 text-xs font-semibold text-amber-800 shadow-2xs transition-colors disabled:opacity-50 cursor-pointer"
         >
-          <Sparkles className="w-4 h-4" />
+          <Sparkles className="w-4 h-4 text-amber-600" />
           {initializing ? 'Initializing...' : 'Initialize Default X Guard Departments & Categories'}
         </button>
       </div>
 
       {initMsg && (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300">
+        <div className="p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-xs font-medium text-emerald-800">
           {initMsg}
         </div>
       )}
 
       {/* Admin Metrics Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5">
-          <div className="flex items-center justify-between text-xs text-zinc-400">
+        <div className="bg-[#EEF2F7] border border-slate-300/80 border-t-2 border-t-blue-500 rounded-xl p-5 shadow-xs">
+          <div className="flex items-center justify-between text-xs font-medium text-slate-600">
             <span>Total Departments</span>
-            <Building2 className="w-4 h-4 text-[#FACC15]" />
+            <div className="w-8 h-8 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center">
+              <Building2 className="w-4 h-4 text-blue-700" />
+            </div>
           </div>
-          <div className="text-3xl font-bold text-white mt-2 font-display">
+          <div className="text-3xl font-bold text-slate-900 mt-2 font-display">
             <AnimatedCounter value={departments.length} />
           </div>
-          <div className="text-xs text-zinc-500 mt-2">
-            <span className="text-emerald-400 font-mono-tabular">{activeDepartments.length}</span> active workspaces
+          <div className="text-xs text-slate-600 mt-2">
+            <span className="text-emerald-700 font-semibold font-mono-tabular">{activeDepartments.length}</span> active workspaces
           </div>
         </div>
 
-        <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5">
-          <div className="flex items-center justify-between text-xs text-zinc-400">
+        <div className="bg-[#EEF2F7] border border-slate-300/80 border-t-2 border-t-indigo-500 rounded-xl p-5 shadow-xs">
+          <div className="flex items-center justify-between text-xs font-medium text-slate-600">
             <span>Registered Users</span>
-            <Users className="w-4 h-4 text-[#D4AF37]" />
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center">
+              <Users className="w-4 h-4 text-indigo-700" />
+            </div>
           </div>
-          <div className="text-3xl font-bold text-white mt-2 font-display">
+          <div className="text-3xl font-bold text-slate-900 mt-2 font-display">
             <AnimatedCounter value={userPermissions.length} />
           </div>
-          <div className="text-xs text-zinc-500 mt-2">
-            <span className="font-mono-tabular text-zinc-300">{editorsCount}</span> editors ·{' '}
-            <span className="font-mono-tabular text-zinc-300">{viewersCount}</span> viewers
+          <div className="text-xs text-slate-600 mt-2">
+            <span className="font-mono-tabular font-semibold text-slate-800">{editorsCount}</span> editors ·{' '}
+            <span className="font-mono-tabular font-semibold text-slate-800">{viewersCount}</span> viewers
           </div>
         </div>
 
-        <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5">
-          <div className="flex items-center justify-between text-xs text-zinc-400">
+        <div className="bg-[#EEF2F7] border border-slate-300/80 border-t-2 border-t-emerald-500 rounded-xl p-5 shadow-xs">
+          <div className="flex items-center justify-between text-xs font-medium text-slate-600">
             <span>{MONTH_NAMES[currentMonth - 1]} Submissions</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
+              <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+            </div>
           </div>
-          <div className="text-3xl font-bold text-white mt-2 font-display">
+          <div className="text-3xl font-bold text-slate-900 mt-2 font-display">
             <AnimatedCounter value={submittedDepts.length} /> / {activeDepartments.length}
           </div>
-          <div className="text-xs text-zinc-500 mt-2">
-            <span className="text-amber-400 font-mono-tabular">{pendingDepts.length}</span> pending submission
+          <div className="text-xs text-slate-600 mt-2">
+            <span className="text-amber-700 font-semibold font-mono-tabular">{pendingDepts.length}</span> pending submission
           </div>
         </div>
 
-        <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5">
-          <div className="flex items-center justify-between text-xs text-zinc-400">
+        <div className="bg-[#11151E] border border-slate-800 border-t-2 border-t-[#FACC15] rounded-xl p-5 shadow-sm">
+          <div className="flex items-center justify-between text-xs font-medium text-zinc-300">
             <span>Company KPI Achievement</span>
-            <Shield className="w-4 h-4 text-[#FACC15]" />
+            <div className="w-8 h-8 rounded-lg bg-amber-400/15 border border-amber-400/35 flex items-center justify-center">
+              <Shield className="w-4 h-4 text-[#FACC15]" />
+            </div>
           </div>
           <div className="text-3xl font-bold text-[#FACC15] mt-2 font-display">
             <AnimatedCounter value={metrics.avgAchievement} decimals={1} suffix="%" />
           </div>
-          <div className="text-xs text-zinc-500 mt-2">
-            Across <span className="font-mono-tabular text-zinc-300">{records.length}</span> saved KPI records
+          <div className="text-xs text-zinc-400 mt-2">
+            Across <span className="font-mono-tabular font-semibold text-zinc-200">{metrics.totalKpis}</span> unique KPIs
           </div>
         </div>
       </div>
 
       {/* Submission Readiness Split */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5 space-y-4">
+        <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 space-y-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-bold text-white font-display">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-900 font-display">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               Submitted Departments ({MONTH_NAMES[currentMonth - 1]} {currentYear})
             </div>
             <button
               type="button"
               onClick={() => onNavigate('department_management')}
-              className="text-xs text-[#FACC15] hover:underline cursor-pointer"
+              className="text-xs font-semibold text-amber-700 hover:underline cursor-pointer"
             >
               Manage
             </button>
@@ -191,30 +199,30 @@ export function AdminPortalView({ onNavigate }: { onNavigate: (s: NavSection) =>
             {submittedDepts.map((d) => (
               <div
                 key={d.id}
-                className="flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-[#161920] border border-white/6 text-xs"
+                className="flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-emerald-500/12 border border-emerald-500/30 text-xs"
               >
-                <span className="font-medium text-zinc-100">{d.name}</span>
-                <span className="text-emerald-400 font-medium">Submitted</span>
+                <span className="font-semibold text-slate-900">{d.name}</span>
+                <span className="text-emerald-800 font-semibold">Submitted</span>
               </div>
             ))}
             {submittedDepts.length === 0 && (
-              <p className="text-xs text-zinc-500 py-4 text-center">
+              <p className="text-xs text-slate-500 py-4 text-center">
                 No departments have submitted KPI records for {MONTH_NAMES[currentMonth - 1]} {currentYear} yet.
               </p>
             )}
           </div>
         </div>
 
-        <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5 space-y-4">
+        <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 space-y-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-bold text-white font-display">
-              <Clock className="w-4 h-4 text-amber-400" />
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-900 font-display">
+              <Clock className="w-4 h-4 text-amber-600" />
               Pending KPI Submissions ({MONTH_NAMES[currentMonth - 1]} {currentYear})
             </div>
             <button
               type="button"
               onClick={() => onNavigate('notifications')}
-              className="text-xs text-[#FACC15] hover:underline cursor-pointer"
+              className="text-xs font-semibold text-amber-700 hover:underline cursor-pointer"
             >
               Send Reminder
             </button>
@@ -223,14 +231,14 @@ export function AdminPortalView({ onNavigate }: { onNavigate: (s: NavSection) =>
             {pendingDepts.map((d) => (
               <div
                 key={d.id}
-                className="flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-[#161920] border border-white/6 text-xs"
+                className="flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-amber-500/12 border border-amber-500/30 text-xs"
               >
-                <span className="font-medium text-zinc-100">{d.name}</span>
-                <span className="text-amber-400 font-medium">Pending</span>
+                <span className="font-semibold text-slate-900">{d.name}</span>
+                <span className="text-amber-800 font-semibold">Pending</span>
               </div>
             ))}
             {pendingDepts.length === 0 && (
-              <p className="text-xs text-zinc-500 py-4 text-center">
+              <p className="text-xs text-slate-500 py-4 text-center">
                 All active departments have submitted for the current month.
               </p>
             )}
@@ -239,35 +247,35 @@ export function AdminPortalView({ onNavigate }: { onNavigate: (s: NavSection) =>
       </div>
 
       {/* Recent System Activities */}
-      <div className="bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/8 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm font-bold text-white font-display">
-            <Activity className="w-4 h-4 text-[#FACC15]" />
+      <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl overflow-hidden shadow-xs">
+        <div className="px-5 py-4 border-b border-slate-300/80 bg-[#E2E8F1] flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-bold text-slate-900 font-display">
+            <Activity className="w-4 h-4 text-indigo-600" />
             Recent System Activities
           </div>
           <button
             type="button"
             onClick={() => onNavigate('activity_logs')}
-            className="text-xs text-[#FACC15] hover:underline cursor-pointer"
+            className="text-xs font-semibold text-amber-700 hover:underline cursor-pointer"
           >
             Full Audit Trail
           </button>
         </div>
 
-        <div className="divide-y divide-white/6">
+        <div className="divide-y divide-slate-200/80">
           {activityLogs.slice(0, 8).map((log) => (
-            <div key={log.id} className="px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div key={log.id} className="px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs hover:bg-[#E5EBF3] transition-colors">
               <div>
-                <span className="font-semibold text-zinc-100">{log.action}</span>
-                <span className="text-zinc-400"> — {log.details}</span>
+                <span className="font-semibold text-slate-900">{log.action}</span>
+                <span className="text-slate-600"> — {log.details}</span>
               </div>
-              <div className="text-zinc-500 whitespace-nowrap">
+              <div className="text-slate-500 whitespace-nowrap">
                 {log.actorEmail} · {formatTimestamp(log.createdAt)}
               </div>
             </div>
           ))}
           {activityLogs.length === 0 && (
-            <div className="p-8 text-center text-xs text-zinc-500">
+            <div className="p-8 text-center text-xs text-slate-500">
               No administrative or KPI activity recorded yet.
             </div>
           )}
@@ -454,19 +462,19 @@ export function UserManagementView() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white font-display">User Management</h1>
-        <p className="text-sm text-zinc-400 mt-1">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 font-display">User Management</h1>
+        <p className="text-sm text-slate-500 mt-1">
           Register Gmail accounts, assign departmental permissions, and activate or revoke access
         </p>
       </div>
 
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">
+        <div className="p-4 rounded-xl bg-rose-500/15 border border-rose-500/35 text-xs font-medium text-rose-800">
           {errorMsg}
         </div>
       )}
       {successMsg && (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300">
+        <div className="p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-xs font-medium text-emerald-800">
           {successMsg}
         </div>
       )}
@@ -475,18 +483,18 @@ export function UserManagementView() {
         {/* Add / Edit User Form */}
         <form
           onSubmit={handleSubmit}
-          className="bg-[#0F1115] border border-white/8 rounded-xl p-6 space-y-4 h-fit"
+          className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-6 space-y-4 h-fit shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-base font-bold text-white font-display">
-              <UserPlus className="w-4 h-4 text-[#FACC15]" />
+            <div className="flex items-center gap-2 text-base font-bold text-slate-900 font-display">
+              <UserPlus className="w-4 h-4 text-amber-600" />
               {editingPerm ? 'Edit User Access' : 'Authorize New Google Account'}
             </div>
             {editingPerm && (
               <button
                 type="button"
                 onClick={resetForm}
-                className="text-xs text-zinc-400 hover:text-white cursor-pointer"
+                className="text-xs font-medium text-slate-600 hover:text-slate-900 cursor-pointer"
               >
                 Cancel
               </button>
@@ -494,7 +502,7 @@ export function UserManagementView() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
               Gmail / Google Account Email *
             </label>
             <input
@@ -504,12 +512,12 @@ export function UserManagementView() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="colleague@gmail.com"
-              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-[#FACC15] disabled:opacity-60"
+              className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 disabled:bg-[#E2E8F1] disabled:text-slate-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1.5">Full Name *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Full Name *</label>
             <input
               type="text"
               required
@@ -517,16 +525,16 @@ export function UserManagementView() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="e.g., Nimali Perera"
-              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+              className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1.5">Access Role *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Access Role *</label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as UserRole)}
-              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+              className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-amber-500"
             >
               <option value="super_admin">Super Administrator</option>
               <option value="dept_editor">Department Editor</option>
@@ -537,26 +545,26 @@ export function UserManagementView() {
           </div>
 
           {role === 'dept_employee_editor' && (
-            <div className="p-3 rounded-lg bg-[#FACC15]/10 border border-[#FACC15]/25 text-[11px] text-zinc-200 leading-relaxed">
-              <strong className="text-[#FACC15]">View All + Scoped Edit:</strong> User can view all departments across KPI Nexus, but can only enter/edit KPIs for the assigned department(s) and employee(s) below.
+            <div className="p-3 rounded-lg bg-amber-500/12 border border-amber-500/30 text-[11px] text-slate-800 leading-relaxed">
+              <strong className="text-amber-800">View All + Scoped Edit:</strong> User can view all departments across KPI, but can only enter/edit KPIs for the assigned department(s) and employee(s) below.
             </div>
           )}
 
           {(role === 'dept_editor' || role === 'dept_employee_editor' || role === 'dept_viewer') && (
             <div className="space-y-2">
-              <label className="block text-xs font-medium text-zinc-300">
+              <label className="block text-xs font-semibold text-slate-700">
                 {role === 'dept_employee_editor'
                   ? 'Editable Department(s) (Multi-Select) *'
                   : 'Assign Departments (Multi-Select) *'}
               </label>
-              <div className="max-h-44 overflow-y-auto space-y-1.5 p-2.5 rounded-lg bg-[#161920] border border-white/10">
+              <div className="max-h-44 overflow-y-auto space-y-1.5 p-2.5 rounded-lg bg-[#E2E8F1] border border-slate-300/80">
                 {departments.map((d) => (
-                  <label key={d.id} className="flex items-center gap-2.5 text-xs text-zinc-200 cursor-pointer py-1">
+                  <label key={d.id} className="flex items-center gap-2.5 text-xs text-slate-800 cursor-pointer py-1">
                     <input
                       type="checkbox"
                       checked={selectedDepts.includes(d.id)}
                       onChange={() => toggleDept(d.id)}
-                      className="accent-[#FACC15]"
+                      className="accent-amber-500"
                     />
                     <span>
                       {d.code} · {d.name}
@@ -564,7 +572,7 @@ export function UserManagementView() {
                   </label>
                 ))}
                 {departments.length === 0 && (
-                  <div className="text-xs text-zinc-500">Create departments first.</div>
+                  <div className="text-xs text-slate-500">Create departments first.</div>
                 )}
               </div>
             </div>
@@ -572,26 +580,26 @@ export function UserManagementView() {
 
           {role === 'dept_employee_editor' && (
             <div className="space-y-2">
-              <label className="block text-xs font-medium text-zinc-300">
+              <label className="block text-xs font-semibold text-slate-700">
                 Editable Employee KPIs (Optional Scope)
               </label>
-              <p className="text-[11px] text-zinc-400">
+              <p className="text-[11px] text-slate-500">
                 Select specific employee(s) to restrict edits strictly to their KPIs, or leave unselected to allow editing all KPIs in the assigned department(s).
               </p>
-              <div className="max-h-36 overflow-y-auto space-y-1.5 p-2.5 rounded-lg bg-[#161920] border border-white/10">
+              <div className="max-h-36 overflow-y-auto space-y-1.5 p-2.5 rounded-lg bg-[#E2E8F1] border border-slate-300/80">
                 {availableEmployees.map((emp) => (
-                  <label key={emp} className="flex items-center gap-2.5 text-xs text-zinc-200 cursor-pointer py-0.5">
+                  <label key={emp} className="flex items-center gap-2.5 text-xs text-slate-800 cursor-pointer py-0.5">
                     <input
                       type="checkbox"
                       checked={selectedEmployees.includes(emp)}
                       onChange={() => toggleEmployee(emp)}
-                      className="accent-[#FACC15]"
+                      className="accent-amber-500"
                     />
                     <span>{emp}</span>
                   </label>
                 ))}
                 {availableEmployees.length === 0 && (
-                  <div className="text-[11px] text-zinc-500">
+                  <div className="text-[11px] text-slate-500">
                     No employee-specific KPIs configured in selected department(s) yet. Add an employee name below if needed.
                   </div>
                 )}
@@ -609,12 +617,12 @@ export function UserManagementView() {
                     }
                   }}
                   placeholder="Add employee name..."
-                  className="flex-1 bg-[#161920] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+                  className="flex-1 bg-[#F5F7FA] border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
                 />
                 <button
                   type="button"
                   onClick={handleAddCustomEmployee}
-                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-xs text-white font-medium cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-[#E2E8F1] hover:bg-slate-300/70 border border-slate-300 text-xs text-slate-800 font-semibold cursor-pointer"
                 >
                   Add
                 </button>
@@ -623,23 +631,23 @@ export function UserManagementView() {
           )}
 
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1.5">Notes</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Notes</label>
             <input
               type="text"
               maxLength={300}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional role or department remarks"
-              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3.5 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+              className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3.5 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
             />
           </div>
 
-          <label className="flex items-center gap-2.5 text-xs text-zinc-200 cursor-pointer">
+          <label className="flex items-center gap-2.5 text-xs font-medium text-slate-700 cursor-pointer">
             <input
               type="checkbox"
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
-              className="accent-[#FACC15]"
+              className="accent-amber-500"
             />
             <span>Account Active (permitted to sign in)</span>
           </label>
@@ -647,16 +655,16 @@ export function UserManagementView() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-2.5 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+            className="w-full py-2.5 rounded-lg bg-[#FACC15] hover:bg-amber-400 text-slate-950 text-sm font-semibold shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
           >
             {saving ? 'Saving...' : editingPerm ? 'Update User Permissions' : 'Authorize User'}
           </button>
         </form>
 
         {/* Registered Users Table */}
-        <div className="xl:col-span-2 bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/8 flex items-center justify-between">
-            <h2 className="text-base font-bold text-white font-display">
+        <div className="xl:col-span-2 bg-[#EEF2F7] border border-slate-300/80 rounded-xl overflow-hidden shadow-xs">
+          <div className="px-5 py-4 border-b border-slate-300/80 flex items-center justify-between">
+            <h2 className="text-base font-bold text-slate-900 font-display">
               Authorized Google Accounts ({userPermissions.length})
             </h2>
           </div>
@@ -664,7 +672,7 @@ export function UserManagementView() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-white/8 text-[11px] font-medium text-zinc-400 bg-[#0B0D11]">
+                <tr className="border-b border-slate-300/80 text-[11px] font-semibold text-slate-600 bg-[#E2E8F1]">
                   <th className="py-3 px-4">User</th>
                   <th className="py-3 px-4">Role</th>
                   <th className="py-3 px-4">Assigned Departments</th>
@@ -672,32 +680,34 @@ export function UserManagementView() {
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/6 text-xs">
+              <tbody className="divide-y divide-slate-200/80 text-xs">
                 {userPermissions.map((p) => (
-                  <tr key={p.id} className="hover:bg-white/[0.02]">
+                  <tr key={p.id} className="hover:bg-[#E5EBF3] transition-colors">
                     <td className="py-3.5 px-4">
-                      <div className="font-semibold text-zinc-100">{p.displayName}</div>
-                      <div className="text-zinc-400">{p.email}</div>
+                      <div className="font-semibold text-slate-900">{p.displayName}</div>
+                      <div className="text-slate-500">{p.email}</div>
                     </td>
-                    <td className="py-3.5 px-4 font-medium text-[#FACC15]">
-                      {ROLE_LABELS[p.role]}
+                    <td className="py-3.5 px-4">
+                      <span className="inline-block px-2 py-0.5 rounded bg-indigo-500/15 border border-indigo-500/30 font-semibold text-indigo-800 text-[11px]">
+                        {ROLE_LABELS[p.role]}
+                      </span>
                     </td>
-                    <td className="py-3.5 px-4 text-zinc-300 max-w-[260px]">
+                    <td className="py-3.5 px-4 text-slate-700 max-w-[260px]">
                       {p.role === 'super_admin' || p.role === 'mgmt_viewer' ? (
                         'All Company Departments'
                       ) : p.role === 'dept_employee_editor' ? (
                         <div className="space-y-1">
-                          <div className="text-[11px] text-emerald-400 font-medium">
+                          <div className="text-[11px] text-emerald-700 font-semibold">
                             View: All Departments
                           </div>
                           <div>
-                            <span className="text-zinc-400">Edit Dept: </span>
+                            <span className="text-slate-500">Edit Dept: </span>
                             {p.departmentIds.length > 0
                               ? p.departmentIds.map((id) => deptMap.get(id) || id).join(', ')
                               : 'None'}
                           </div>
                           {p.editableEmployeeNames && p.editableEmployeeNames.length > 0 && (
-                            <div className="text-[11px] text-[#FACC15]">
+                            <div className="text-[11px] font-medium text-amber-800">
                               Employees: {p.editableEmployeeNames.join(', ')}
                             </div>
                           )}
@@ -712,8 +722,8 @@ export function UserManagementView() {
                       <button
                         type="button"
                         onClick={() => handleToggleActive(p)}
-                        className={`text-xs font-medium cursor-pointer hover:underline ${
-                          p.isActive ? 'text-emerald-400' : 'text-rose-400'
+                        className={`text-xs font-semibold cursor-pointer hover:underline ${
+                          p.isActive ? 'text-emerald-700' : 'text-rose-700'
                         }`}
                       >
                         {p.isActive ? 'Active (Click to Deactivate)' : 'Inactive (Click to Activate)'}
@@ -725,7 +735,7 @@ export function UserManagementView() {
                           type="button"
                           onClick={() => handleEdit(p)}
                           title="Edit Permissions"
-                          className="p-1.5 rounded-md text-zinc-400 hover:text-[#FACC15] hover:bg-white/5 cursor-pointer"
+                          className="p-1.5 rounded-md text-slate-500 hover:text-amber-700 hover:bg-amber-500/15 cursor-pointer"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -733,7 +743,7 @@ export function UserManagementView() {
                           type="button"
                           onClick={() => setPermToRemove(p)}
                           title="Remove User Access"
-                          className="p-1.5 rounded-md text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
+                          className="p-1.5 rounded-md text-slate-500 hover:text-rose-700 hover:bg-rose-500/15 cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -743,7 +753,7 @@ export function UserManagementView() {
                 ))}
                 {userPermissions.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-zinc-500">
+                    <td colSpan={5} className="py-8 text-center text-slate-500">
                       No users registered yet.
                     </td>
                   </tr>
@@ -757,7 +767,7 @@ export function UserManagementView() {
       <ConfirmModal
         open={Boolean(permToRemove)}
         title="Revoke User Access"
-        description={`Remove ${permToRemove?.email} from KPI Nexus? They will immediately lose all application access.`}
+        description={`Remove ${permToRemove?.email} from KPI? They will immediately lose all application access.`}
         confirmLabel="Remove Access"
         onCancel={() => setPermToRemove(null)}
         onConfirm={handleConfirmDelete}
@@ -859,16 +869,16 @@ export function DepartmentManagementView() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white font-display">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 font-display">
           Department Management
         </h1>
-        <p className="text-sm text-zinc-400 mt-1">
+        <p className="text-sm text-slate-500 mt-1">
           Create, rename, edit, deactivate, or delete corporate department workspaces
         </p>
       </div>
 
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">
+        <div className="p-4 rounded-xl bg-rose-500/15 border border-rose-500/35 text-xs font-medium text-rose-800">
           {errorMsg}
         </div>
       )}
@@ -876,18 +886,18 @@ export function DepartmentManagementView() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <form
           onSubmit={handleSubmit}
-          className="bg-[#0F1115] border border-white/8 rounded-xl p-6 space-y-4 h-fit"
+          className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-6 space-y-4 h-fit shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-base font-bold text-white font-display">
-              <Plus className="w-4 h-4 text-[#FACC15]" />
+            <div className="flex items-center gap-2 text-base font-bold text-slate-900 font-display">
+              <Plus className="w-4 h-4 text-amber-600" />
               {editingDept ? 'Edit Department' : 'Create Department'}
             </div>
             {editingDept && (
               <button
                 type="button"
                 onClick={resetForm}
-                className="text-xs text-zinc-400 hover:text-white cursor-pointer"
+                className="text-xs font-medium text-slate-600 hover:text-slate-900 cursor-pointer"
               >
                 Cancel
               </button>
@@ -896,7 +906,7 @@ export function DepartmentManagementView() {
 
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Department Name *
               </label>
               <input
@@ -906,11 +916,11 @@ export function DepartmentManagementView() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Security Operations"
-                className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+                className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1.5">Code *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Code *</label>
               <input
                 type="text"
                 required
@@ -918,26 +928,26 @@ export function DepartmentManagementView() {
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                 placeholder="OPS"
-                className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-100 font-mono-tabular uppercase focus:outline-none focus:border-[#FACC15]"
+                className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 font-mono-tabular uppercase focus:outline-none focus:border-amber-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1.5">Description</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Description</label>
             <textarea
               rows={2}
               maxLength={500}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Core mandate and operational KPIs..."
-              className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+              className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Department Head
               </label>
               <input
@@ -946,28 +956,28 @@ export function DepartmentManagementView() {
                 value={headName}
                 onChange={(e) => setHeadName(e.target.value)}
                 placeholder="Head Name"
-                className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+                className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1.5">Head Email</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Head Email</label>
               <input
                 type="email"
                 maxLength={120}
                 value={headEmail}
                 onChange={(e) => setHeadEmail(e.target.value)}
                 placeholder="head@gmail.com"
-                className="w-full bg-[#161920] border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+                className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
               />
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-xs text-zinc-200 cursor-pointer">
+          <label className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
             <input
               type="checkbox"
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
-              className="accent-[#FACC15]"
+              className="accent-amber-500"
             />
             <span>Department Active</span>
           </label>
@@ -975,15 +985,15 @@ export function DepartmentManagementView() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-2.5 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+            className="w-full py-2.5 rounded-lg bg-[#FACC15] hover:bg-amber-400 text-slate-950 text-sm font-semibold shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
           >
             {saving ? 'Saving...' : editingDept ? 'Save Department Changes' : 'Create Department'}
           </button>
         </form>
 
-        <div className="xl:col-span-2 bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/8">
-            <h2 className="text-base font-bold text-white font-display">
+        <div className="xl:col-span-2 bg-[#EEF2F7] border border-slate-300/80 rounded-xl overflow-hidden shadow-xs">
+          <div className="px-5 py-4 border-b border-slate-300/80">
+            <h2 className="text-base font-bold text-slate-900 font-display">
               Corporate Departments ({departments.length})
             </h2>
           </div>
@@ -991,7 +1001,7 @@ export function DepartmentManagementView() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-white/8 text-[11px] font-medium text-zinc-400 bg-[#0B0D11]">
+                <tr className="border-b border-slate-300/80 text-[11px] font-semibold text-slate-600 bg-[#E2E8F1]">
                   <th className="py-3 px-4">Code</th>
                   <th className="py-3 px-4">Department Name</th>
                   <th className="py-3 px-4">Head</th>
@@ -999,36 +1009,44 @@ export function DepartmentManagementView() {
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/6 text-xs">
+              <tbody className="divide-y divide-slate-200/80 text-xs">
                 {departments.map((d) => (
-                  <tr key={d.id} className="hover:bg-white/[0.02]">
-                    <td className="py-3.5 px-4 font-mono-tabular font-semibold text-[#FACC15]">
+                  <tr key={d.id} className="hover:bg-[#E5EBF3] transition-colors">
+                    <td className="py-3.5 px-4 font-mono-tabular font-bold text-indigo-700">
                       {d.code}
                     </td>
                     <td className="py-3.5 px-4">
-                      <div className="font-semibold text-zinc-100">{d.name}</div>
-                      <div className="text-zinc-500 truncate max-w-[280px]">{d.description}</div>
+                      <div className="font-semibold text-slate-900">{d.name}</div>
+                      <div className="text-slate-500 truncate max-w-[280px]">{d.description}</div>
                     </td>
-                    <td className="py-3.5 px-4 text-zinc-300">
+                    <td className="py-3.5 px-4 text-slate-700">
                       <div>{d.headName || '—'}</div>
-                      <div className="text-zinc-500">{d.headEmail}</div>
+                      <div className="text-slate-500">{d.headEmail}</div>
                     </td>
-                    <td className={`py-3.5 px-4 font-medium ${d.isActive ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {d.isActive ? 'Active' : 'Inactive'}
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded border text-[11px] font-semibold ${
+                          d.isActive
+                            ? 'text-emerald-800 bg-emerald-500/15 border-emerald-500/35'
+                            : 'text-rose-800 bg-rose-500/15 border-rose-500/35'
+                        }`}
+                      >
+                        {d.isActive ? 'Active' : 'Inactive'}
+                      </span>
                     </td>
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="inline-flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => handleEdit(d)}
-                          className="p-1.5 rounded-md text-zinc-400 hover:text-[#FACC15] hover:bg-white/5 cursor-pointer"
+                          className="p-1.5 rounded-md text-slate-500 hover:text-amber-700 hover:bg-amber-500/15 cursor-pointer"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           type="button"
                           onClick={() => setDeptToDelete(d)}
-                          className="p-1.5 rounded-md text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
+                          className="p-1.5 rounded-md text-slate-500 hover:text-rose-700 hover:bg-rose-500/15 cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1038,7 +1056,7 @@ export function DepartmentManagementView() {
                 ))}
                 {departments.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-zinc-500">
+                    <td colSpan={5} className="py-8 text-center text-slate-500">
                       No departments created yet.
                     </td>
                   </tr>
@@ -1073,7 +1091,6 @@ export function AccessPermissionsView({ onNavigate }: { onNavigate: (s: NavSecti
     { capability: 'Enter, Edit & Delete Assigned Dept / Employee KPIs', sa: true, de: true, ee: true, dv: false, mv: false },
     { capability: 'Modify Other Departments’ / Unassigned Employees’ KPIs', sa: true, de: false, ee: false, dv: false, mv: false },
     { capability: 'Generate & Export PDF / Excel Reports', sa: true, de: true, ee: true, dv: true, mv: true },
-    { capability: 'Launch Meeting Presentation Mode', sa: true, de: true, ee: true, dv: true, mv: true },
     { capability: 'Manage Users, Departments, Targets & Settings', sa: true, de: false, ee: false, dv: false, mv: false },
   ];
 
@@ -1081,10 +1098,10 @@ export function AccessPermissionsView({ onNavigate }: { onNavigate: (s: NavSecti
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white font-display">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 font-display">
             Access Permissions & RBAC Governance
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             Enforced at database level via Firestore Security Rules and email-verified identity claims
           </p>
         </div>
@@ -1092,43 +1109,46 @@ export function AccessPermissionsView({ onNavigate }: { onNavigate: (s: NavSecti
         <button
           type="button"
           onClick={() => onNavigate('user_management')}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#FACC15] hover:bg-[#EAB308] text-black text-xs font-semibold cursor-pointer"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#FACC15] hover:bg-amber-400 text-slate-950 text-xs font-semibold shadow-xs cursor-pointer transition-colors"
         >
           <UserCheck className="w-4 h-4" />
           Modify User Assignments
         </button>
       </div>
 
-      <div className="bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/8 flex items-center gap-2">
-          <KeyRound className="w-4 h-4 text-[#FACC15]" />
-          <h2 className="text-base font-bold text-white font-display">Role Capability Matrix</h2>
+      <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl overflow-hidden shadow-xs">
+        <div className="px-5 py-4 border-b border-slate-300/80 flex items-center gap-2">
+          <KeyRound className="w-4 h-4 text-amber-600" />
+          <h2 className="text-base font-bold text-slate-900 font-display">Role Capability Matrix</h2>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-white/8 text-xs text-zinc-400 bg-[#0B0D11]">
+              <tr className="border-b border-slate-300/80 text-xs font-semibold text-slate-600 bg-[#E2E8F1]">
                 <th className="py-3 px-4">Permission Capability</th>
-                <th className="py-3 px-4 text-center text-[#FACC15]">Super Admin</th>
+                <th className="py-3 px-4 text-center text-amber-700">Super Admin</th>
                 <th className="py-3 px-4 text-center">Dept Editor</th>
-                <th className="py-3 px-4 text-center text-[#FACC15]">Emp Dept Editor</th>
+                <th className="py-3 px-4 text-center text-indigo-700">Emp Dept Editor</th>
                 <th className="py-3 px-4 text-center">Dept Viewer</th>
                 <th className="py-3 px-4 text-center">Mgmt Viewer</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/6 text-xs">
+            <tbody className="divide-y divide-slate-200/80 text-xs">
               {matrix.map((row) => (
-                <tr key={row.capability}>
-                  <td className="py-3.5 px-4 font-medium text-zinc-200">{row.capability}</td>
+                <tr key={row.capability} className="hover:bg-[#E5EBF3] transition-colors">
+                  <td className="py-3.5 px-4 font-medium text-slate-800">{row.capability}</td>
                   {[row.sa, row.de, row.ee, row.dv, row.mv].map((allowed, i) => (
-                    <td
-                      key={i}
-                      className={`py-3.5 px-4 text-center font-semibold ${
-                        allowed ? 'text-emerald-400' : 'text-zinc-600'
-                      }`}
-                    >
-                      {allowed ? 'Allowed' : 'Denied'}
+                    <td key={i} className="py-3.5 px-4 text-center">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold ${
+                          allowed
+                            ? 'text-emerald-800 bg-emerald-500/15 border border-emerald-500/35'
+                            : 'text-slate-500 bg-[#E2E8F1] border border-slate-300/80'
+                        }`}
+                      >
+                        {allowed ? 'Allowed' : 'Denied'}
+                      </span>
                     </td>
                   ))}
                 </tr>
@@ -1138,17 +1158,17 @@ export function AccessPermissionsView({ onNavigate }: { onNavigate: (s: NavSecti
         </div>
       </div>
 
-      <div className="bg-[#0F1115] border border-white/8 rounded-xl p-5">
-        <h3 className="text-sm font-bold text-white font-display mb-3">
+      <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl p-5 shadow-xs">
+        <h3 className="text-sm font-bold text-slate-900 font-display mb-3">
           Role Distribution Summary
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {(['super_admin', 'dept_editor', 'dept_employee_editor', 'dept_viewer', 'mgmt_viewer'] as UserRole[]).map((r) => {
             const count = userPermissions.filter((u) => u.role === r && u.isActive).length;
             return (
-              <div key={r} className="p-4 rounded-lg bg-[#161920] border border-white/8">
-                <div className="text-xs text-zinc-400">{ROLE_LABELS[r]}</div>
-                <div className="text-2xl font-bold text-[#FACC15] font-mono-tabular mt-1">{count}</div>
+              <div key={r} className="p-4 rounded-lg bg-[#E2E8F1] border border-slate-300/80">
+                <div className="text-xs font-medium text-slate-600">{ROLE_LABELS[r]}</div>
+                <div className="text-2xl font-bold text-amber-700 font-mono-tabular mt-1">{count}</div>
               </div>
             );
           })}
@@ -1179,31 +1199,31 @@ export function ActivityLogsView() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white font-display">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 font-display">
             System Activity Logs
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             Immutable audit trail of all KPI submissions, edits, user authorization changes, and configuration updates
           </p>
         </div>
 
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search user email, department, action..."
-            className="w-full bg-[#0F1115] border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-[#FACC15]"
+            className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 shadow-2xs"
           />
         </div>
       </div>
 
-      <div className="bg-[#0F1115] border border-white/8 rounded-xl overflow-hidden">
+      <div className="bg-[#EEF2F7] border border-slate-300/80 rounded-xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-white/8 text-[11px] font-medium text-zinc-400 bg-[#0B0D11]">
+              <tr className="border-b border-slate-300/80 text-[11px] font-semibold text-slate-600 bg-[#E2E8F1]">
                 <th className="py-3 px-4">Date & Time</th>
                 <th className="py-3 px-4">User Email</th>
                 <th className="py-3 px-4">Department</th>
@@ -1211,23 +1231,25 @@ export function ActivityLogsView() {
                 <th className="py-3 px-4">Details</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/6 text-xs">
+            <tbody className="divide-y divide-slate-200/80 text-xs">
               {filtered.map((l) => (
-                <tr key={l.id} className="hover:bg-white/[0.02]">
-                  <td className="py-3 px-4 font-mono-tabular text-zinc-400 whitespace-nowrap">
+                <tr key={l.id} className="hover:bg-[#E5EBF3] transition-colors">
+                  <td className="py-3 px-4 font-mono-tabular text-slate-500 whitespace-nowrap">
                     {formatTimestamp(l.createdAt)}
                   </td>
-                  <td className="py-3 px-4 text-zinc-200">{l.actorEmail}</td>
-                  <td className="py-3 px-4 text-zinc-300">{l.departmentName || '—'}</td>
-                  <td className="py-3 px-4 font-semibold text-[#FACC15] whitespace-nowrap">
-                    {l.action}
+                  <td className="py-3 px-4 font-medium text-slate-900">{l.actorEmail}</td>
+                  <td className="py-3 px-4 text-slate-700">{l.departmentName || '—'}</td>
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    <span className="inline-block px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/35 font-semibold text-amber-800 text-[11px]">
+                      {l.action}
+                    </span>
                   </td>
-                  <td className="py-3 px-4 text-zinc-400">{l.details}</td>
+                  <td className="py-3 px-4 text-slate-600">{l.details}</td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-zinc-500">
+                  <td colSpan={5} className="py-8 text-center text-slate-500">
                     No activity logs match your search.
                   </td>
                 </tr>

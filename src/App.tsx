@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell, Menu } from 'lucide-react';
+import { Bell, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider, useData } from './context/DataContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -10,10 +10,8 @@ import { Sidebar } from './components/Sidebar';
 import { OverviewView } from './views/OverviewView';
 import { DepartmentsView } from './views/DepartmentsView';
 import { KpiEntryView } from './views/KpiEntryView';
-import { KpiMonitoringView } from './views/KpiMonitoringView';
 import { GraphicalIllustrationsView } from './views/GraphicalIllustrationsView';
 import { ReportsView } from './views/ReportsView';
-import { PresentationModeView } from './views/PresentationModeView';
 import { NotificationsView } from './views/NotificationsView';
 import { UserProfileView } from './views/UserProfileView';
 import {
@@ -34,10 +32,8 @@ const SECTION_TITLES: Record<NavSection, string> = {
   overview: 'Overview',
   departments: 'Departments',
   kpi_entry: 'KPI Data Entry',
-  kpi_monitoring: 'KPI Monitoring',
   graphical_illustrations: 'Graphical Illustrations',
   reports: 'Reports',
-  meeting_presentation: 'Meeting Presentation',
   notifications: 'Notifications',
   profile: 'User Profile',
   admin_portal: 'Admin Portal',
@@ -55,8 +51,27 @@ function AppShell() {
 
   const [activeSection, setActiveSection] = useState<NavSection>('overview');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem('kpi_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [entryDeptId, setEntryDeptId] = useState<string | undefined>(undefined);
   const [editingRecord, setEditingRecord] = useState<KpiRecord | null>(null);
+
+  const handleToggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem('kpi_sidebar_collapsed', String(next));
+      } catch {
+        // ignore storage restrictions
+      }
+      return next;
+    });
+  };
 
   if (authLoading) {
     return <LoadingScreen message="Verifying Google Identity & Corporate Access..." />;
@@ -67,7 +82,7 @@ function AppShell() {
   }
 
   if (dataLoading) {
-    return <LoadingScreen message="Loading KPI Nexus Workspace..." />;
+    return <LoadingScreen message="Loading KPI Workspace..." />;
   }
 
   const handleSelectSection = (section: NavSection) => {
@@ -98,13 +113,6 @@ function AppShell() {
     setActiveSection('kpi_entry');
   };
 
-  const handleEditRecord = (rec: KpiRecord) => {
-    if (!isEditor) return;
-    setEditingRecord(rec);
-    setEntryDeptId(rec.departmentId);
-    setActiveSection('kpi_entry');
-  };
-
   const renderSection = () => {
     switch (activeSection) {
       case 'overview':
@@ -123,20 +131,16 @@ function AppShell() {
             editingRecord={editingRecord}
             onFinished={() => {
               setEditingRecord(null);
-              setActiveSection('kpi_monitoring');
+              setActiveSection('overview');
             }}
           />
         ) : (
           <OverviewView onNavigate={handleSelectSection} />
         );
-      case 'kpi_monitoring':
-        return <KpiMonitoringView onEditRecord={handleEditRecord} />;
       case 'graphical_illustrations':
         return <GraphicalIllustrationsView />;
       case 'reports':
         return <ReportsView />;
-      case 'meeting_presentation':
-        return <PresentationModeView />;
       case 'notifications':
         return <NotificationsView />;
       case 'profile':
@@ -175,46 +179,61 @@ function AppShell() {
   };
 
   return (
-    <div className="min-h-screen bg-[#08090B] text-zinc-100 flex">
+    <div className="min-h-screen bg-[#DDE3EC] text-slate-900 flex">
       <Sidebar
         activeSection={activeSection}
         onSelect={handleSelectSection}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={handleToggleSidebar}
       />
 
       <div className="flex-1 min-w-0 flex flex-col min-h-screen">
-        {/* Top Bar */}
-        <header className="sticky top-0 z-30 bg-[#08090B]/90 backdrop-blur-md border-b border-white/8 px-5 sm:px-8 py-3.5 flex items-center justify-between gap-4 no-print">
+        {/* Top Bar — Sleek Obsidian Frame */}
+        <header className="sticky top-0 z-30 bg-[#0E1117]/95 backdrop-blur-md border-b border-slate-800 px-5 sm:px-8 py-3.5 flex items-center justify-between gap-4 no-print shadow-sm">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              className="lg:hidden p-2 rounded-lg bg-[#0F1115] border border-white/10 text-zinc-200 cursor-pointer"
+              className="lg:hidden p-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-zinc-200 cursor-pointer"
               aria-label="Open navigation menu"
             >
               <Menu className="w-4 h-4" />
             </button>
+            <button
+              type="button"
+              onClick={handleToggleSidebar}
+              className="hidden lg:inline-flex p-2 rounded-lg bg-slate-800/70 hover:bg-slate-800 border border-slate-700/80 text-zinc-300 hover:text-[#FACC15] hover:border-[#FACC15]/40 transition-colors cursor-pointer"
+              title={sidebarCollapsed ? 'Expand navigation panel' : 'Minimize navigation panel'}
+              aria-label={sidebarCollapsed ? 'Expand navigation panel' : 'Minimize navigation panel'}
+            >
+              {sidebarCollapsed ? (
+                <PanelLeftOpen className="w-4 h-4" />
+              ) : (
+                <PanelLeftClose className="w-4 h-4" />
+              )}
+            </button>
             <div className="text-xs sm:text-sm text-zinc-400 truncate">
-              <span>{settings.appName}</span>
-              <span className="mx-2 text-zinc-600">/</span>
-              <span className="text-zinc-100 font-medium">{SECTION_TITLES[activeSection]}</span>
+              <span className="font-semibold text-[#FACC15]">{settings.appName}</span>
+              <span className="mx-2 text-slate-600">/</span>
+              <span className="text-zinc-100 font-semibold">{SECTION_TITLES[activeSection]}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            <span className="hidden sm:inline text-xs text-[#D4AF37] font-medium">
+            <span className="hidden sm:inline text-xs text-[#FACC15] font-semibold tracking-wide">
               {role ? ROLE_LABELS[role] : ''}
             </span>
             <button
               type="button"
               onClick={() => handleSelectSection('notifications')}
               aria-label="Open Notifications"
-              className="relative p-2 rounded-lg bg-[#0F1115] hover:bg-[#161920] border border-white/10 text-zinc-200 transition-colors cursor-pointer"
+              className="relative p-2 rounded-lg bg-slate-800/70 hover:bg-slate-800 border border-slate-700/80 hover:border-[#FACC15]/40 text-zinc-200 transition-colors cursor-pointer"
             >
               <Bell className="w-4 h-4 text-[#FACC15]" />
               {unreadNotificationsCount > 0 && (
-                <span className="absolute -top-1 -right-1 px-1.5 min-w-[18px] h-[18px] rounded-full bg-[#FACC15] text-black text-[10px] font-bold font-mono-tabular flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 px-1.5 min-w-[18px] h-[18px] rounded-full bg-rose-600 text-white text-[10px] font-bold font-mono-tabular flex items-center justify-center shadow-xs">
                   {unreadNotificationsCount}
                 </span>
               )}
@@ -238,9 +257,9 @@ function AppShell() {
         </main>
 
         {/* Corporate Footer */}
-        <footer className="px-5 sm:px-8 py-4 border-t border-white/8 text-xs text-zinc-500 flex flex-col sm:flex-row sm:items-center justify-between gap-2 no-print">
+        <footer className="px-5 sm:px-8 py-4 bg-[#0E1117] border-t border-slate-800 text-xs text-zinc-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2 no-print">
           <span>© {settings.companyName}. All Rights Reserved.</span>
-          <span>KPI Nexus · Centralized Departmental Performance Platform</span>
+          <span className="text-amber-400/80">KPI · Centralized Departmental Performance Platform</span>
         </footer>
       </div>
     </div>

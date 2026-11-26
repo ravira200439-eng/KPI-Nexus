@@ -117,7 +117,7 @@
         "targetValue": { "type": "number" },
         "actualValue": { "type": "number" },
         "achievementPct": { "type": "number" },
-        "status": { "type": "string", "enum": ["Target Achieved", "Nearly Achieved", "Needs Improvement", "Critical"] },
+        "status": { "type": "string", "enum": ["Achieved", "Not Achieved"] },
         "remarks": { "type": "string", "maxLength": 1000 },
         "evidenceUrl": { "type": "string", "maxLength": 500 },
         "evidenceName": { "type": "string", "maxLength": 160 },

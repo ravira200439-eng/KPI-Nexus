@@ -11,7 +11,7 @@ export const BOOTSTRAPPED_ADMIN_EMAIL = 'ravira200439@gmail.com';
 
 export const DEFAULT_SYSTEM_SETTINGS: Omit<SystemSettings, 'updatedBy' | 'updatedAt'> = {
   companyName: 'X Guard (Private) Limited',
-  appName: 'KPI Nexus',
+  appName: 'KPI',
   currency: 'LKR',
   thresholdAchieved: 100,
   thresholdNearly: 80,
@@ -142,56 +142,38 @@ export function calculateAchievementPct(
   return Math.round(clamped * 100) / 100;
 }
 
+export function normalizeKpiStatus(status: string): KpiStatus {
+  return status === 'Achieved' || status === 'Target Achieved' ? 'Achieved' : 'Not Achieved';
+}
+
 export function classifyKpiStatus(
   achievementPct: number,
   settings?: Partial<SystemSettings>
 ): KpiStatus {
   const achieved = settings?.thresholdAchieved ?? 100;
-  const nearly = settings?.thresholdNearly ?? 80;
-  const needs = settings?.thresholdNeedsImprovement ?? 50;
-
-  if (achievementPct >= achieved) return 'Target Achieved';
-  if (achievementPct >= nearly) return 'Nearly Achieved';
-  if (achievementPct >= needs) return 'Needs Improvement';
-  return 'Critical';
+  return achievementPct >= achieved ? 'Achieved' : 'Not Achieved';
 }
 
-export function getStatusColor(status: KpiStatus): {
+export function getStatusColor(status: KpiStatus | string): {
   text: string;
   bg: string;
   border: string;
   hex: string;
 } {
-  switch (status) {
-    case 'Target Achieved':
-      return {
-        text: 'text-emerald-400',
-        bg: 'bg-emerald-500/10',
-        border: 'border-emerald-500/30',
-        hex: '#10B981',
-      };
-    case 'Nearly Achieved':
-      return {
-        text: 'text-[#FACC15]',
-        bg: 'bg-[#FACC15]/10',
-        border: 'border-[#FACC15]/30',
-        hex: '#FACC15',
-      };
-    case 'Needs Improvement':
-      return {
-        text: 'text-amber-400',
-        bg: 'bg-amber-500/10',
-        border: 'border-amber-500/30',
-        hex: '#F59E0B',
-      };
-    case 'Critical':
-      return {
-        text: 'text-rose-400',
-        bg: 'bg-rose-500/10',
-        border: 'border-rose-500/30',
-        hex: '#EF4444',
-      };
+  if (normalizeKpiStatus(status) === 'Achieved') {
+    return {
+      text: 'text-emerald-800',
+      bg: 'bg-emerald-500/15',
+      border: 'border-emerald-500/35',
+      hex: '#10B981',
+    };
   }
+  return {
+    text: 'text-rose-800',
+    bg: 'bg-rose-500/15',
+    border: 'border-rose-500/35',
+    hex: '#EF4444',
+  };
 }
 
 export function formatMetricValue(
