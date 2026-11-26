@@ -71,6 +71,10 @@ export function ReportsView() {
   const [selectedQuarter, setSelectedQuarter] = useState<number>(0);
   const [summaryTab, setSummaryTab] = useState<SummaryTab>('all');
   const [detailGroupMode, setDetailGroupMode] = useState<DetailGroupMode>('monthly');
+  const [regMonth, setRegMonth] = useState<string>('');
+  const [regDeptId, setRegDeptId] = useState<string>('all');
+  const [regEmployee, setRegEmployee] = useState<string>('all');
+  const [regCategory, setRegCategory] = useState<string>('all');
   const [showPreview, setShowPreview] = useState(true);
   const [exportingPdf, setExportingPdf] = useState(false);
 
@@ -146,80 +150,232 @@ export function ReportsView() {
   );
   const yearlyDetailed = useMemo(() => computeYearlyDetailedRows(reportRecords), [reportRecords]);
 
-  const groupedDetailSections = useMemo(() => {
-    if (detailGroupMode === 'flat') {
-      return [{ key: 'all', title: `All KPI Records (${metrics.totalKpis} Unique KPIs)`, avg: metrics.avgAchievement, records: reportRecords }];
+  const regMonthOptions = useMemo(() => {
+    const counts = new Map<number, number>();
+    let noMonthCount = 0;
+    reportRecords.forEach((r) => {
+      const m = getRecordEffectiveMonth(r);
+      if (m >= 1 && m <= 12) {
+        counts.set(m, (counts.get(m) || 0) + 1);
+      } else {
+        noMonthCount += 1;
+      }
+    });
+    const opts = Array.from(counts.entries())
+      .sort((a, b) => b[0] - a[0])
+      .map(([m, count]) => ({
+        value: `m-${m}`,
+        label: `${MONTH_NAMES[m - 1]} (${count})`,
+      }));
+    if (noMonthCount > 0) {
+      opts.push({
+        value: 'm-0',
+        label: `Quarterly / Annual (${noMonthCount})`,
+      });
     }
+    return opts;
+  }, [reportRecords]);
+
+  const regDeptOptions = useMemo(() => {
+    const map = new Map<string, { name: string; count: number }>();
+    reportRecords.forEach((r) => {
+      const cur = map.get(r.departmentId) || { name: r.departmentName, count: 0 };
+      cur.count += 1;
+      map.set(r.departmentId, cur);
+    });
+    return Array.from(map.entries())
+      .sort((a, b) => a[1].name.localeCompare(b[1].name))
+      .map(([id, v]) => ({
+        value: id,
+        label: `${v.name} (${v.count})`,
+      }));
+  }, [reportRecords]);
+
+  const regEmployeeOptions = useMemo(() => {
+    const empCounts = new Map<string, number>();
+    let generalCount = 0;
+    reportRecords.forEach((r) => {
+      const empName = r.isEmployeeSpecific ? (r.employeeName || '').trim() : '';
+      if (empName) {
+        empCounts.set(empName, (empCounts.get(empName) || 0) + 1);
+      } else {
+        generalCount += 1;
+      }
+    });
+    const opts = Array.from(empCounts.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([name, count]) => ({
+        value: name,
+        label: `${name} (${count})`,
+      }));
+    if (generalCount > 0) {
+      opts.push({
+        value: '__general__',
+        label: `Departmental KPIs (${generalCount})`,
+      });
+    }
+    return opts;
+  }, [reportRecords]);
+
+  const regCategoryOptions = useMemo(() => {
+    const catCounts = new Map<string, number>();
+    reportRecords.forEach((r) => {
+      const cat = (r.categoryName || 'Uncategorized').trim();
+      catCounts.set(cat, (catCounts.get(cat) || 0) + 1);
+    });
+    return Array.from(catCounts.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([cat, count]) => ({
+        value: cat,
+        label: `${cat} (${count})`,
+      }));
+  }, [reportRecords]);
+
+  const defaultRegMonth = regMonthOptions[0]?.value || 'all';
+  const effectiveRegMonth =
+    regMonth === 'all'
+      ? 'all'
+      : regMonth && regMonthOptions.some((o) => o.value === regMonth)
+        ? regMonth
+        : defaultRegMonth;
+  const effectiveRegDept =
+    regDeptId !== 'all' && regDeptOptions.some((o) => o.value === regDeptId) ? regDeptId : 'all';
+  const effectiveRegEmployee =
+    regEmployee !== 'all' && regEmployeeOptions.some((o) => o.value === regEmployee) ? regEmployee : 'all';
+  const effectiveRegCategory =
+    regCategory !== 'all' && regCategoryOptions.some((o) => o.value === regCategory) ? regCategory : 'all';
+
+  const hasCustomRegisterFilter =
+    effectiveRegMonth !== defaultRegMonth ||
+    effectiveRegDept !== 'all' ||
+    effectiveRegEmployee !== 'all' ||
+    effectiveRegCategory !== 'all';
+
+  const resetRegisterFilters = () => {
+    setRegMonth('');
+    setRegDeptId('all');
+    setRegEmployee('all');
+    setRegCategory('all');
+  };
+
+  const registerRecords = useMemo(() => {
+    return reportRecords.filter((r) => {
+      if (effectiveRegMonth !== 'all') {
+        const m = getRecordEffectiveMonth(r);
+        if (effectiveRegMonth === 'm-0') {
+          if (m >= 1 && m <= 12) return false;
+        } else if (`m-${m}` !== effectiveRegMonth) {
+          return false;
+        }
+      }
+      if (effectiveRegDept !== 'all' && r.departmentId !== effectiveRegDept) {
+        return false;
+      }
+      if (effectiveRegEmployee !== 'all') {
+        const empName = r.isEmployeeSpecific ? (r.employeeName || '').trim() : '';
+        if (effectiveRegEmployee === '__general__') {
+          if (empName) return false;
+        } else if (empName !== effectiveRegEmployee) {
+          return false;
+        }
+      }
+      if (effectiveRegCategory !== 'all') {
+        const cat = (r.categoryName || 'Uncategorized').trim();
+        if (cat !== effectiveRegCategory) return false;
+      }
+      return true;
+    });
+  }, [reportRecords, effectiveRegMonth, effectiveRegDept, effectiveRegEmployee, effectiveRegCategory]);
+
+  const groupedDetailSections = useMemo(() => {
+    if (registerRecords.length === 0) return [];
+
+    if (detailGroupMode === 'flat') {
+      const m = computeOverviewMetrics(registerRecords);
+      return [
+        {
+          key: 'flat',
+          title: `Filtered KPIs (${registerRecords.length})`,
+          avg: m.avgAchievement,
+          records: registerRecords,
+        },
+      ];
+    }
+
     if (detailGroupMode === 'monthly') {
-      const monthMap = new Map<number, typeof reportRecords>();
-      const noMonth: typeof reportRecords = [];
-      reportRecords.forEach((r) => {
+      const map = new Map<number, typeof registerRecords>();
+      const noMonth: typeof registerRecords = [];
+      registerRecords.forEach((r) => {
         const m = getRecordEffectiveMonth(r);
         if (m >= 1 && m <= 12) {
-          const arr = monthMap.get(m) || [];
+          const arr = map.get(m) || [];
           arr.push(r);
-          monthMap.set(m, arr);
+          map.set(m, arr);
         } else {
           noMonth.push(r);
         }
       });
-      const sections = Array.from(monthMap.entries())
+      const sections = Array.from(map.entries())
         .sort((a, b) => b[0] - a[0])
         .map(([m, list]) => {
-          const groupMetrics = computeOverviewMetrics(list);
+          const gm = computeOverviewMetrics(list);
           return {
             key: `m-${m}`,
-            title: `${MONTH_NAMES[m - 1]} (${groupMetrics.totalKpis} KPIs)`,
-            avg: groupMetrics.avgAchievement,
+            title: `${MONTH_NAMES[m - 1]} (${list.length} KPIs)`,
+            avg: gm.avgAchievement,
             records: list,
           };
         });
       if (noMonth.length > 0) {
-        const noMonthMetrics = computeOverviewMetrics(noMonth);
+        const gm = computeOverviewMetrics(noMonth);
         sections.push({
           key: 'm-0',
-          title: `Quarterly / Annual KPIs (${noMonthMetrics.totalKpis} KPIs)`,
-          avg: noMonthMetrics.avgAchievement,
+          title: `Quarterly / Annual KPIs (${noMonth.length} KPIs)`,
+          avg: gm.avgAchievement,
           records: noMonth,
         });
       }
       return sections;
     }
+
     if (detailGroupMode === 'yearly') {
-      const yMap = new Map<number, typeof reportRecords>();
-      reportRecords.forEach((r) => {
-        const arr = yMap.get(r.reportingYear) || [];
+      const map = new Map<number, typeof registerRecords>();
+      registerRecords.forEach((r) => {
+        const arr = map.get(r.reportingYear) || [];
         arr.push(r);
-        yMap.set(r.reportingYear, arr);
+        map.set(r.reportingYear, arr);
       });
-      return Array.from(yMap.entries())
+      return Array.from(map.entries())
         .sort((a, b) => b[0] - a[0])
         .map(([y, list]) => {
-          const groupMetrics = computeOverviewMetrics(list);
+          const gm = computeOverviewMetrics(list);
           return {
             key: `y-${y}`,
-            title: `FY ${y} (${groupMetrics.totalKpis} KPIs)`,
-            avg: groupMetrics.avgAchievement,
+            title: `FY ${y} (${list.length} KPIs)`,
+            avg: gm.avgAchievement,
             records: list,
           };
         });
     }
-    const dMap = new Map<string, { name: string; list: typeof reportRecords }>();
-    reportRecords.forEach((r) => {
+
+    const dMap = new Map<string, { name: string; list: typeof registerRecords }>();
+    registerRecords.forEach((r) => {
       const cur = dMap.get(r.departmentId) || { name: r.departmentName, list: [] };
       cur.list.push(r);
       dMap.set(r.departmentId, cur);
     });
-    return Array.from(dMap.entries()).map(([id, v]) => {
-      const groupMetrics = computeOverviewMetrics(v.list);
-      return {
-        key: `d-${id}`,
-        title: `${v.name} (${groupMetrics.totalKpis} KPIs)`,
-        avg: groupMetrics.avgAchievement,
-        records: v.list,
-      };
-    });
-  }, [detailGroupMode, reportRecords, metrics.totalKpis, metrics.avgAchievement]);
+    return Array.from(dMap.entries())
+      .sort((a, b) => a[1].name.localeCompare(b[1].name))
+      .map(([id, v]) => {
+        const gm = computeOverviewMetrics(v.list);
+        return {
+          key: `d-${id}`,
+          title: `${v.name} (${v.list.length} KPIs)`,
+          avg: gm.avgAchievement,
+          records: v.list,
+        };
+      });
+  }, [registerRecords, detailGroupMode]);
 
   const activeReportMeta = REPORT_TYPES.find((r) => r.id === reportType)!;
   const reportingPeriodHeading = useMemo(() => {
@@ -817,7 +973,9 @@ export function ReportsView() {
                     type="button"
                     onClick={() => {
                       setSummaryTab(t.id);
-                      if (t.id !== 'all') setDetailGroupMode(t.id);
+                      if (t.id !== 'all') {
+                        setDetailGroupMode(t.id);
+                      }
                     }}
                     className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                       summaryTab === t.id
@@ -960,13 +1118,18 @@ export function ReportsView() {
                   </div>
                 )}
 
-                {/* 4. Full Detailed KPI Records Table (Grouped Monthly-Wise / Yearly-Wise / Dept-Wise / Flat) */}
+                {/* 4. Detailed KPI Performance Register */}
                 <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <h3 className="text-xs font-bold text-slate-900 tracking-wide">
-                      Detailed KPI Performance Register ({reportRecords.length})
-                    </h3>
-                    <div className="flex items-center gap-1 p-0.5 bg-[#DCE3EE] rounded-lg border border-slate-300 no-print">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900 tracking-wide">
+                        Detailed KPI Performance Register ({registerRecords.length} of {reportRecords.length})
+                      </h3>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Filter records by Month, Department, Employee, or Category
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 p-1 bg-[#DCE3EE] rounded-lg border border-slate-300 overflow-x-auto no-print">
                       {(
                         [
                           { id: 'monthly', label: 'Group: Monthly-Wise' },
@@ -974,105 +1137,213 @@ export function ReportsView() {
                           { id: 'department', label: 'Group: Department-Wise' },
                           { id: 'flat', label: 'Flat List' },
                         ] as const
-                      ).map((gm) => (
+                      ).map((g) => (
                         <button
-                          key={gm.id}
+                          key={g.id}
                           type="button"
-                          onClick={() => setDetailGroupMode(gm.id)}
-                          className={`px-2.5 py-1 rounded text-[11px] font-medium cursor-pointer whitespace-nowrap transition-colors ${
-                            detailGroupMode === gm.id
-                              ? 'bg-[#FACC15] text-slate-950 font-semibold shadow-2xs'
+                          onClick={() => setDetailGroupMode(g.id)}
+                          className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                            detailGroupMode === g.id
+                              ? 'bg-[#FACC15] text-slate-950 font-semibold'
                               : 'text-slate-600 hover:text-slate-900'
                           }`}
                         >
-                          {gm.label}
+                          {g.label}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  {groupedDetailSections.map((sec) => (
-                    <div key={sec.key} className="overflow-x-auto border border-slate-200 rounded-lg">
-                      {detailGroupMode !== 'flat' && (
+                  {/* Simultaneous Filter Dropdowns (Month, Department, Employee, Category) */}
+                  <div className="p-3.5 bg-[#E2E8F1] border border-slate-300/80 rounded-lg space-y-2.5 no-print">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-semibold text-slate-700">
+                        Register Filters
+                      </span>
+                      {hasCustomRegisterFilter && (
+                        <button
+                          type="button"
+                          onClick={resetRegisterFilters}
+                          className="text-[11px] font-semibold text-amber-700 hover:text-amber-800 hover:underline cursor-pointer"
+                        >
+                          Reset Filters
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                          Month
+                        </label>
+                        <select
+                          aria-label="Filter register by month"
+                          value={effectiveRegMonth}
+                          onChange={(e) => setRegMonth(e.target.value)}
+                          className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500 cursor-pointer"
+                        >
+                          <option value="all">All Months ({reportRecords.length})</option>
+                          {regMonthOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                          Department
+                        </label>
+                        <select
+                          aria-label="Filter register by department"
+                          value={effectiveRegDept}
+                          onChange={(e) => setRegDeptId(e.target.value)}
+                          className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500 cursor-pointer"
+                        >
+                          <option value="all">All Departments ({reportRecords.length})</option>
+                          {regDeptOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                          Employee
+                        </label>
+                        <select
+                          aria-label="Filter register by employee"
+                          value={effectiveRegEmployee}
+                          onChange={(e) => setRegEmployee(e.target.value)}
+                          className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500 cursor-pointer"
+                        >
+                          <option value="all">All Employees ({reportRecords.length})</option>
+                          {regEmployeeOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                          Category
+                        </label>
+                        <select
+                          aria-label="Filter register by category"
+                          value={effectiveRegCategory}
+                          onChange={(e) => setRegCategory(e.target.value)}
+                          className="w-full bg-[#F5F7FA] border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-amber-500 cursor-pointer"
+                        >
+                          <option value="all">All Categories ({reportRecords.length})</option>
+                          {regCategoryOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {groupedDetailSections.length === 0 ? (
+                    <div className="py-10 px-4 text-center border border-slate-200 rounded-lg bg-[#E2E8F1]/40 space-y-2.5">
+                      <p className="text-xs font-medium text-slate-600">
+                        No KPI records match the selected Month, Department, Employee, and Category combination.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={resetRegisterFilters}
+                        className="px-3 py-1.5 rounded-lg bg-[#FACC15] text-slate-950 text-xs font-semibold hover:bg-amber-300 transition-colors cursor-pointer"
+                      >
+                        Reset Register Filters
+                      </button>
+                    </div>
+                  ) : (
+                    groupedDetailSections.map((sec) => (
+                      <div key={sec.key} className="overflow-x-auto border border-slate-200 rounded-lg">
                         <div className="px-3.5 py-2 bg-[#E2E8F1] border-b border-slate-200 flex items-center justify-between text-xs">
                           <span className="font-semibold text-amber-700">{sec.title}</span>
                           <span className="font-mono-tabular text-slate-600">
                             Avg Achievement: <span className="text-amber-700 font-bold">{sec.avg.toFixed(1)}%</span>
                           </span>
                         </div>
-                      )}
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="border-b border-slate-200 text-[11px] font-semibold text-slate-500 bg-[#E2E8F1]">
-                            <th className="py-2.5 px-3">KPI Title & Details</th>
-                            <th className="py-2.5 px-3">Department</th>
-                            <th className="py-2.5 px-3">Period</th>
-                            <th className="py-2.5 px-3 text-right">Target</th>
-                            <th className="py-2.5 px-3 text-right">Actual</th>
-                            <th className="py-2.5 px-3 text-right">Achievement</th>
-                            <th className="py-2.5 px-3">Status</th>
-                            <th className="py-2.5 px-3">Submitted By & Remarks</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-xs">
-                          {sec.records.map((r) => {
-                            const st = getStatusColor(r.status);
-                            return (
-                              <tr key={r.id} className="hover:bg-[#E2E8F1]/70">
-                                <td className="py-2.5 px-3 max-w-[260px]">
-                                  <div className="font-semibold text-slate-900">{r.kpiTitle}</div>
-                                  <div className="text-[11px] font-medium text-indigo-700">
-                                    {r.categoryName}
-                                    {r.isEmployeeSpecific && r.employeeName ? ` · Employee: ${r.employeeName}` : ''}
-                                  </div>
-                                  {r.kpiDescription && r.kpiDescription !== r.kpiTitle && (
-                                    <div className="text-[11px] text-slate-500 truncate mt-0.5">
-                                      {r.kpiDescription}
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-200 text-[11px] font-semibold text-slate-500 bg-[#E2E8F1]">
+                              <th className="py-2.5 px-3">KPI Title & Details</th>
+                              <th className="py-2.5 px-3">Department</th>
+                              <th className="py-2.5 px-3">Period</th>
+                              <th className="py-2.5 px-3 text-right">Target</th>
+                              <th className="py-2.5 px-3 text-right">Actual</th>
+                              <th className="py-2.5 px-3 text-right">Achievement</th>
+                              <th className="py-2.5 px-3">Status</th>
+                              <th className="py-2.5 px-3">Submitted By & Remarks</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 text-xs">
+                            {sec.records.map((r) => {
+                              const st = getStatusColor(r.status);
+                              return (
+                                <tr key={r.id} className="hover:bg-[#E2E8F1]/70">
+                                  <td className="py-2.5 px-3 max-w-[260px]">
+                                    <div className="font-semibold text-slate-900">{r.kpiTitle}</div>
+                                    <div className="text-[11px] font-medium text-indigo-700">
+                                      {r.categoryName}
+                                      {r.isEmployeeSpecific && r.employeeName ? ` · Employee: ${r.employeeName}` : ''}
                                     </div>
-                                  )}
-                                </td>
-                                <td className="py-2.5 px-3 text-slate-700 whitespace-nowrap">{r.departmentName}</td>
-                                <td className="py-2.5 px-3 font-mono-tabular text-slate-600 whitespace-nowrap">
-                                  {r.reportingPeriod} · {formatPeriodLabel(r)}
-                                </td>
-                                <td className="py-2.5 px-3 text-right font-mono-tabular text-slate-600 whitespace-nowrap">
-                                  {r.targetValue.toLocaleString()} {r.unit}
-                                </td>
-                                <td className="py-2.5 px-3 text-right font-mono-tabular font-semibold text-slate-900 whitespace-nowrap">
-                                  {r.actualValue.toLocaleString()} {r.unit}
-                                </td>
-                                <td className="py-2.5 px-3 text-right font-mono-tabular font-bold text-amber-700 whitespace-nowrap">
-                                  {r.achievementPct.toFixed(1)}%
-                                </td>
-                                <td className="py-2.5 px-3 whitespace-nowrap">
-                                  <span className={`inline-block px-2 py-0.5 rounded border text-[11px] font-semibold ${st.text} ${st.bg} ${st.border}`}>
-                                    {normalizeKpiStatus(r.status)}
-                                  </span>
-                                </td>
-                                <td className="py-2.5 px-3 max-w-[240px]">
-                                  <div className="text-slate-700 truncate">
-                                    {r.submittedByName || r.submittedByEmail} · {formatShortDate(r.submissionDate)}
-                                  </div>
-                                  <div className="text-[11px] text-slate-500 truncate mt-0.5">{r.remarks || '—'}</div>
-                                  {r.evidenceUrl && (
-                                    <a
-                                      href={r.evidenceUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline font-medium mt-0.5"
-                                    >
-                                      <ExternalLink className="w-3 h-3" />
-                                      {r.evidenceName || 'Evidence'}
-                                    </a>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ))}
+                                    {r.kpiDescription && r.kpiDescription !== r.kpiTitle && (
+                                      <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                                        {r.kpiDescription}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-slate-700 whitespace-nowrap">{r.departmentName}</td>
+                                  <td className="py-2.5 px-3 font-mono-tabular text-slate-600 whitespace-nowrap">
+                                    {r.reportingPeriod} · {formatPeriodLabel(r)}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right font-mono-tabular text-slate-600 whitespace-nowrap">
+                                    {r.targetValue.toLocaleString()} {r.unit}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right font-mono-tabular font-semibold text-slate-900 whitespace-nowrap">
+                                    {r.actualValue.toLocaleString()} {r.unit}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right font-mono-tabular font-bold text-amber-700 whitespace-nowrap">
+                                    {r.achievementPct.toFixed(1)}%
+                                  </td>
+                                  <td className="py-2.5 px-3 whitespace-nowrap">
+                                    <span className={`inline-block px-2 py-0.5 rounded border text-[11px] font-semibold ${st.text} ${st.bg} ${st.border}`}>
+                                      {normalizeKpiStatus(r.status)}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-3 max-w-[240px]">
+                                    <div className="text-slate-700 truncate">
+                                      {r.submittedByName || r.submittedByEmail} · {formatShortDate(r.submissionDate)}
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 truncate mt-0.5">{r.remarks || '—'}</div>
+                                    {r.evidenceUrl && (
+                                      <a
+                                        href={r.evidenceUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline font-medium mt-0.5"
+                                      >
+                                        <ExternalLink className="w-3 h-3" />
+                                        {r.evidenceName || 'Evidence'}
+                                      </a>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))
+                  )}
                 </div>
               </>
             )}
